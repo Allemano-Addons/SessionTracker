@@ -3,6 +3,7 @@
 local addonName, ST = ...
 
 ST.name = addonName
+ST.LOGO = "Interface\\AddOns\\" .. addonName .. "\\Media\\logo" -- 64x64 TGA (Media/logo.png is the source)
 
 function ST:Print(...)
     local msg = strjoin(" ", tostringall(...))

@@ -149,7 +149,16 @@ local function build()
         if button == "RightButton" then ST:Call("menu", openMenu, self) end
     end)
     local name = W.Text(title, 1, "text")
-    name:SetPoint("LEFT", PAD, 0)
+    -- Logo left of the name (the name moves back to the edge if the texture fails).
+    local logo = title:CreateTexture(nil, "ARTWORK")
+    logo:SetSize(18, 18)
+    logo:SetPoint("LEFT", PAD - 3, 0)
+    if logo:SetTexture(ST.LOGO) == false then
+        logo:Hide()
+        name:SetPoint("LEFT", PAD, 0)
+    else
+        name:SetPoint("LEFT", logo, "RIGHT", 4, 0)
+    end
     name:SetText("Session")
     local accent = title:CreateTexture(nil, "ARTWORK")
     accent:SetPoint("TOPLEFT", name, "BOTTOMLEFT", 0, -2)

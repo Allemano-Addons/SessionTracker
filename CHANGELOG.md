@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.2
+- SessionTracker logo: in the game's addon list (IconTexture) and left of the "Session" title.
+  Media/logo.tga (64x64) is made from Media/logo.png.
+
 ## 0.3.1
 - "Levels" button next to the Session title opens/closes Level times (accent while open);
   removed from the right-click menu.

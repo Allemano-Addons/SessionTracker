@@ -1,7 +1,7 @@
 ## Interface: 16001
 ## Title: SessionTracker
 ## Notes: Gold, XP and time for your current play session, and how long each level took
-## Version: 0.3.0
+## Version: 0.3.1
 ## SavedVariables: SessionTrackerDB
 ## OptionalDeps: Hush
 

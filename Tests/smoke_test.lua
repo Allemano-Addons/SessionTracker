@@ -10,7 +10,7 @@ local GETTERS = {
     GetLeft = 100, GetTop = 800, GetRight = 400, GetBottom = 100, GetFrameLevel = 1, IsShown = false,
     IsEnabled = true, IsVisible = true,
 }
-local scripts = setmetatable({}, { __mode = "k" })
+local scripts = {} -- strong: real frames are kept alive by their parent, mocks are not
 local function mock(kind)
     local o = { _kind = kind, _shown = kind ~= "Frame" and true or true }
     return setmetatable(o, { __index = function(t, k)
@@ -192,7 +192,8 @@ step("title menu", function()
     ST.Widgets.OpenMenu = function(list) items = list end
     for f, s in pairs(scripts) do if s.OnMouseUp and s.OnDragStart then s.OnMouseUp(f, "RightButton") end end
     ST.Widgets.OpenMenu = realOpen
-    assert(items and #items == 6, "menu not opened")
+    assert(items and #items == 5, "menu not opened")
+    for _, it in ipairs(items) do assert(it.text ~= "Level times", "Level times still in the menu") end
 end)
 step("slash errors", function() SlashCmdList.SESSIONTRACKER("errors") end)
 
@@ -330,6 +331,40 @@ step("manual sessions go on over logins, counting online time only", function()
     fire("PLAYER_ENTERING_WORLD", true, false)
     assert(cur() ~= s0 and #history() == before + 1, "login mode should start a new session")
     assert(history()[1].duration == online + 30, "archived duration " .. tostring(history()[1].duration))
+end)
+
+-- Level times: the "Levels" button, no ESC, stays open over reloads, X closes it.
+step("Levels button toggles level times", function()
+    local b = main().levelsButton
+    assert(b, "no Levels button")
+    scripts[b].OnClick(b)
+    local f = _G.SessionTrackerLevelsFrame
+    assert(f._shown and ST.LevelsUI.IsOpen(), "not opened by the button")
+    for _, name in ipairs(UISpecialFrames) do
+        assert(name ~= "SessionTrackerLevelsFrame", "ESC would close level times")
+    end
+    scripts[b].OnClick(b)
+    assert(not f._shown and not ST.LevelsUI.IsOpen(), "not closed by the button")
+end)
+step("level times stays open over a reload, X closes it", function()
+    ST.LevelsUI.SetShown(true)
+    local f = _G.SessionTrackerLevelsFrame
+    f:Hide() -- the UI going away on /reload
+    fire("PLAYER_ENTERING_WORLD", false, true)
+    assert(f._shown, "not reopened after reload")
+    -- The X is the CloseButton in its title bar.
+    local closed = false
+    for btn, s in pairs(scripts) do
+        if not closed and s.OnClick and rawget(btn, "text") and btn.text._text == "x" and f._shown then
+            s.OnClick(btn)
+            if not f._shown then closed = true end
+        end
+    end
+    local xs = 0
+    for btn, s in pairs(scripts) do if s.OnClick and rawget(btn, "text") and btn.text._text == "x" then xs = xs + 1 end end
+    assert(closed and not ST.LevelsUI.IsOpen(), "X did not close it (x buttons: " .. xs .. ", shown " .. tostring(f._shown) .. ")")
+    fire("PLAYER_ENTERING_WORLD", false, true)
+    assert(not f._shown, "came back although closed")
 end)
 
 print(#errors == 0 and "ALL OK" or (#errors .. " error(s)"))

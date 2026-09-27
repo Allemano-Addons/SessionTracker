@@ -193,9 +193,10 @@ local function build()
     hint:SetWidth(WIDTH - CONTROL_X - 12)
     y = y + 30
 
-    local reset = textButton(frame, "Reset window position", function()
+    local reset = textButton(frame, "Reset window positions", function()
         ST.Window.ResetPosition()
-        ST:Print("Window position reset.")
+        ST.LevelsUI.ResetPosition()
+        ST:Print("Window positions reset.")
     end)
     reset:SetPoint("TOPLEFT", LABEL_X, -(y + 8))
     y = y + 44

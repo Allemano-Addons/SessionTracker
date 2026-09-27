@@ -113,10 +113,17 @@ function LevelsUI.Refresh()
     frame:SetHeight(TITLE_H + 6 + listH + 30)
 end
 
+-- Open state and position are remembered (SessionTrackerDB.levelsWindow). Like the
+-- session window it stays up: only its X (or the Levels button) closes it, not ESC.
+local function db() return ST.db.levelsWindow end
+
+local function savePosition()
+    db().left, db().top = Theme:Snap(frame:GetLeft(), frame), Theme:Snap(frame:GetTop(), frame)
+end
+
 local function build()
     frame = CreateFrame("Frame", "SessionTrackerLevelsFrame", UIParent)
-    tinsert(UISpecialFrames, "SessionTrackerLevelsFrame") -- ESC closes it
-    frame:SetFrameStrata("HIGH")
+    frame:SetFrameStrata("MEDIUM")
     frame:SetClampedToScreen(true)
     frame:SetMovable(true)
     frame:EnableMouse(true)
@@ -132,12 +139,19 @@ local function build()
     W.Line(title, "bottom", "line")
     title:EnableMouse(true)
     title:RegisterForDrag("LeftButton")
-    title:SetScript("OnDragStart", function() frame:StartMoving() end)
-    title:SetScript("OnDragStop", function() frame:StopMovingOrSizing() end)
+    title:SetScript("OnDragStart", function()
+        if not ST.db.window.locked then frame:StartMoving() end
+    end)
+    title:SetScript("OnDragStop", function()
+        frame:StopMovingOrSizing()
+        savePosition()
+        frame:ClearAllPoints()
+        frame:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", db().left, db().top)
+    end)
     local name = W.Text(title, 1, "text")
     name:SetPoint("LEFT", PAD, 0)
     name:SetText("Level times")
-    local close = W.CloseButton(title, function() frame:Hide() end)
+    local close = W.CloseButton(title, function() LevelsUI.SetShown(false) end)
     close:SetSize(20, 20)
     close:SetPoint("RIGHT", -5, 0)
 
@@ -172,12 +186,17 @@ local function build()
         W.HideTooltip()
     end)
     frame:SetScale(ST.db.settings.scale or 1)
+    frame.bg:SetAlpha(ST.db.settings.bgAlpha or 0.96)
     frame:Hide()
 end
 
--- Next to the session window (left side if there is room), else in the middle.
+-- Where the player left it; the first time next to the session window.
 local function place()
     frame:ClearAllPoints()
+    if db().left and db().top then
+        frame:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", db().left, db().top)
+        return
+    end
     local main = _G.SessionTrackerFrame
     if main and main:IsShown() and (main:GetLeft() or 0) > WIDTH + 20 then
         frame:SetPoint("TOPRIGHT", main, "TOPLEFT", -8, 0)
@@ -188,12 +207,54 @@ local function place()
     end
 end
 
-function LevelsUI.Toggle()
+function LevelsUI.IsOpen() return ST.db ~= nil and db().shown == true end
+
+function LevelsUI.SetShown(shown)
     if not ST.db then return end
     if not frame then build() end
-    if frame:IsShown() then frame:Hide() return end
-    place()
-    frame:Show()
+    db().shown = shown and true or nil
+    if shown then
+        if not frame:IsShown() then
+            place()
+            frame:Show()
+        end
+    else
+        frame:Hide()
+    end
+    if ST.Window.UpdateLevelsButton then ST.Window.UpdateLevelsButton() end
 end
+
+function LevelsUI.Toggle() LevelsUI.SetShown(not LevelsUI.IsOpen()) end
+
+function LevelsUI.ResetPosition()
+    db().left, db().top = nil, nil
+    if frame and frame:IsShown() then place() end
+end
+
+-- Open again after a /reload or login if it was open.
+ST:RegisterEvent("PLAYER_ENTERING_WORLD", function()
+    if LevelsUI.IsOpen() then
+        if not frame then build() end
+        if not frame:IsShown() then
+            place()
+            frame:Show()
+        end
+    end
+end)
+
+-- Follows the session window's "hide in combat".
+ST:RegisterEvent("PLAYER_REGEN_DISABLED", function()
+    if frame and ST.db.settings.hideInCombat and frame:IsShown() then frame:Hide() end
+end)
+ST:RegisterEvent("PLAYER_REGEN_ENABLED", function()
+    if frame and LevelsUI.IsOpen() and not frame:IsShown() then frame:Show() end
+end)
+
+ST:OnSettingChanged(function(key)
+    if not frame then return end
+    if key == "scale" then frame:SetScale(ST.db.settings.scale or 1) end
+    if key == "bgAlpha" then frame.bg:SetAlpha(ST.db.settings.bgAlpha or 0.96) end
+    LevelsUI.Refresh()
+end)
 
 ST:AddSlashCommand("levels", function() LevelsUI.Toggle() end, "show how long each level took")

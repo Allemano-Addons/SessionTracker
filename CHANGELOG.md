@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.1
+- "Levels" button next to the Session title opens/closes Level times (accent while open);
+  removed from the right-click menu.
+- Level times stays open until its X (or the button): ESC no longer closes it, and it comes back
+  after /reload and login. Its position is remembered; it follows "Hide in combat" and the lock.
+  "Reset window positions" resets both windows.
+
 ## 0.3.0
 - Settings window (gear button in the title, title menu, `/session settings`): font, text size,
   accent (follow Hush / class / custom), background, scale; which rows show; level bar on/off;

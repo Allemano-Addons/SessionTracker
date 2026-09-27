@@ -112,7 +112,6 @@ local function openMenu(anchor)
     W.OpenMenu({
         { text = "Session", title = true },
         { text = "Reset session", onClick = function() Session.Reset() end },
-        { text = "Level times", onClick = function() ST.LevelsUI.Toggle() end },
         { text = "Settings", onClick = function() ST.Settings.Toggle() end },
         { text = "Lock position", checked = db.locked == true, onClick = function() db.locked = not db.locked or nil end },
         { text = "Hide (/session shows it)", onClick = function() Window.SetShown(false) end },
@@ -156,6 +155,26 @@ local function build()
     accent:SetPoint("TOPLEFT", name, "BOTTOMLEFT", 0, -2)
     accent:SetSize(14, 2)
     W.OnAccent(function(r, g, b) accent:SetColorTexture(r, g, b, 1) end)
+
+    -- "Levels": opens/closes the level times window; accent-colored while it is open.
+    local levels = CreateFrame("Button", nil, title)
+    levels:SetHeight(20)
+    levels.text = W.Text(levels, -1, "textFaint")
+    levels.text:SetPoint("CENTER")
+    levels.text:SetText("Levels")
+    levels:SetWidth(levels.text:GetStringWidth() + 12)
+    levels:SetPoint("LEFT", name, "RIGHT", 8, 0)
+    levels:SetScript("OnEnter", function(self)
+        self.text:SetTextColor(Theme:Color("text"))
+        W.ShowTooltip(self, { "Level times", colorCode("textFaint") .. "How long every level took|r" })
+    end)
+    levels:SetScript("OnLeave", function()
+        Window.UpdateLevelsButton()
+        W.HideTooltip()
+    end)
+    levels:SetScript("OnClick", function() ST:Call("levels button", ST.LevelsUI.Toggle) end)
+    frame.levelsButton = levels
+    W.OnAccent(function() Window.UpdateLevelsButton() end)
 
     local close = W.CloseButton(title, function() Window.SetShown(false) end)
     close:SetSize(20, 20)
@@ -222,6 +241,7 @@ local function build()
     frame.fill:SetPoint("BOTTOMLEFT", frame.track)
     W.OnAccent(function(r, g, b) frame.fill:SetColorTexture(r, g, b, 1) end)
     Window.Layout()
+    Window.UpdateLevelsButton()
 
     frame:SetScript("OnShow", function()
         Window.Refresh()
@@ -331,6 +351,16 @@ ST:OnSettingChanged(function(key)
     if key == "hideInCombat" and not ST.db.settings.hideInCombat and ST.db.window.shown ~= false then frame:Show() end
     Window.Refresh()
 end)
+
+function Window.UpdateLevelsButton()
+    local b = frame and frame.levelsButton
+    if not b then return end
+    if ST.LevelsUI.IsOpen() then
+        b.text:SetTextColor(Theme:Accent())
+    else
+        b.text:SetTextColor(Theme:Color("textFaint"))
+    end
+end
 
 function Window.ResetPosition()
     ST.db.window.left, ST.db.window.top = nil, nil

@@ -105,6 +105,7 @@ local function initDB()
     db.settings = db.settings or {}
     fillDefaults(db.settings, DEFAULT_SETTINGS)
     db.window = db.window or {}
+    db.levelsWindow = db.levelsWindow or {}
     db.chars = db.chars or {} -- keyed by player GUID
     db.errors = db.errors or {}
     for _, e in ipairs(ST.errors) do tinsert(db.errors, e) end

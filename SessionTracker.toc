@@ -1,0 +1,12 @@
+## Interface: 16001
+## Title: SessionTracker
+## Notes: Gold, XP and time for your current play session
+## Version: 0.1.0
+## SavedVariables: SessionTrackerDB
+## OptionalDeps: Hush
+
+Core.lua
+Theme.lua
+Widgets.lua
+Session.lua
+UI\Window.lua

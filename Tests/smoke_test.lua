@@ -192,7 +192,7 @@ step("title menu", function()
     ST.Widgets.OpenMenu = function(list) items = list end
     for f, s in pairs(scripts) do if s.OnMouseUp and s.OnDragStart then s.OnMouseUp(f, "RightButton") end end
     ST.Widgets.OpenMenu = realOpen
-    assert(items and #items == 5, "menu not opened")
+    assert(items and #items == 6, "menu not opened")
 end)
 step("slash errors", function() SlashCmdList.SESSIONTRACKER("errors") end)
 
@@ -259,6 +259,77 @@ step("level times window and the This level row", function()
     scripts[f.rows[1]].OnEnter(f.rows[1])
     SlashCmdList.SESSIONTRACKER("levels")
     assert(not f._shown, "did not close")
+end)
+
+-- Settings.
+local main = function() return _G.SessionTrackerFrame end
+step("settings window opens and every control works", function()
+    SlashCmdList.SESSIONTRACKER("settings")
+    local f = _G.SessionTrackerSettingsFrame
+    assert(f and f._shown, "settings not shown")
+    -- Click every toggle twice (off and back on).
+    local toggles = 0
+    for b, s in pairs(scripts) do
+        if s.OnClick and rawget(b, "track") and rawget(b, "knob") then
+            s.OnClick(b)
+            s.OnClick(b)
+            toggles = toggles + 1
+        end
+    end
+    assert(toggles == 7 + 3, "toggles found: " .. toggles)
+    SlashCmdList.SESSIONTRACKER("settings")
+    assert(not f._shown, "settings did not close")
+end)
+step("row switched off disappears, window gets shorter", function()
+    main():Show()
+    ST.Window.Refresh()
+    local full = main().rowsH
+    ST.db.settings.rows.gold = false
+    ST:SetSetting("rows", ST.db.settings.rows)
+    assert(not main().rows[2].label._shown and not main().rows[2].value._shown, "gold row still shown")
+    assert(main().rowsH == full - 20, "height " .. main().rowsH .. " vs " .. full)
+    ST.db.settings.rows.thisLevel = false
+    ST:SetSetting("rows", ST.db.settings.rows)
+    assert(not main().levelTimesButton._shown, "click area of a hidden row still shown")
+    ST.db.settings.rows.gold, ST.db.settings.rows.thisLevel = true, true
+    ST:SetSetting("rows", ST.db.settings.rows)
+end)
+step("level bar setting", function()
+    P.level = 9
+    ST:SetSetting("levelBar", false)
+    assert(not main().track._shown, "bar shown although off")
+    ST:SetSetting("levelBar", true)
+    assert(main().track._shown, "bar not back")
+end)
+step("hide in combat", function()
+    ST:SetSetting("hideInCombat", true)
+    fire("PLAYER_REGEN_DISABLED")
+    assert(not main()._shown, "not hidden in combat")
+    fire("PLAYER_REGEN_ENABLED")
+    assert(main()._shown and ST.db.window.shown ~= false, "not back after combat")
+    ST:SetSetting("hideInCombat", false)
+    fire("PLAYER_REGEN_DISABLED")
+    assert(main()._shown, "hidden although the setting is off")
+end)
+step("manual sessions go on over logins, counting online time only", function()
+    ST:SetSetting("newSession", "manual")
+    local s0 = cur()
+    local before = #history()
+    now = now + 600
+    ST.Session.Stats() -- the ticker keeps lastSeen current
+    local online = ST.Session.Stats().elapsed
+    fire("PLAYER_LOGOUT")
+    now = now + 5000 -- offline
+    fire("PLAYER_ENTERING_WORLD", true, false)
+    assert(cur() == s0 and #history() == before, "a new session started")
+    now = now + 30
+    assert(ST.Session.Stats().elapsed == online + 30, "offline time counted: " .. ST.Session.Stats().elapsed .. " vs " .. (online + 30))
+    ST:SetSetting("newSession", "login")
+    fire("PLAYER_LOGOUT")
+    now = now + 100
+    fire("PLAYER_ENTERING_WORLD", true, false)
+    assert(cur() ~= s0 and #history() == before + 1, "login mode should start a new session")
+    assert(history()[1].duration == online + 30, "archived duration " .. tostring(history()[1].duration))
 end)
 
 print(#errors == 0 and "ALL OK" or (#errors .. " error(s)"))

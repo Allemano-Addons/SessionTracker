@@ -47,40 +47,41 @@ local function duration(sec)
 end
 
 -- ---------------------------------------------------------------------------
--- Rows: label + value(stats) -> text [, colorKey]
+-- Rows: label + value(stats) -> text [, colorKey]. id = key in settings.rows.
 -- ---------------------------------------------------------------------------
 
 local ROWS = {
-    { "Time", function(s) return duration(s.elapsed) end },
-    { "Gold", function(s) return signedMoney(s.gold) end },
+    { "Time", function(s) return duration(s.elapsed) end, id = "time" },
+    { "Gold", function(s) return signedMoney(s.gold) end, id = "gold" },
     { "Gold / hour", function(s)
         if not s.goldPerHour then return "...", "textFaint" end
         return signedMoney(s.goldPerHour)
-    end },
+    end, id = "goldHour" },
     { "XP", function(s)
         if s.maxLevel and s.xpGained == 0 then return "max level", "textFaint" end
         local text = num(s.xpGained)
         if s.levels > 0 then text = text .. colorCode("good") .. ("  +%d level%s"):format(s.levels, s.levels > 1 and "s" or "") .. "|r" end
         return text
-    end },
+    end, id = "xp" },
     { "XP / hour", function(s)
         if s.maxLevel then return "-", "textFaint" end
         if not s.xpPerHour then return "...", "textFaint" end
         return num(floor(s.xpPerHour + 0.5))
-    end },
+    end, id = "xpHour" },
     { "Next level", function(s)
         if s.maxLevel then return "max level", "textFaint" end
         if not s.timeToLevel then return "...", "textFaint" end
         return duration(s.timeToLevel)
-    end },
+    end, id = "nextLevel" },
     -- /played on the current level; click opens all level times.
     { "This level", function(s)
         if s.maxLevel then return "max level", "textFaint" end
         local t = ST.Levels.CurrentLevelTime()
         if not t then return "...", "textFaint" end
         return duration(t)
-    end, click = true },
+    end, id = "thisLevel", click = true },
 }
+Window.ROWS = ROWS -- the settings list them
 
 -- ---------------------------------------------------------------------------
 -- Build
@@ -112,6 +113,7 @@ local function openMenu(anchor)
         { text = "Session", title = true },
         { text = "Reset session", onClick = function() Session.Reset() end },
         { text = "Level times", onClick = function() ST.LevelsUI.Toggle() end },
+        { text = "Settings", onClick = function() ST.Settings.Toggle() end },
         { text = "Lock position", checked = db.locked == true, onClick = function() db.locked = not db.locked or nil end },
         { text = "Hide (/session shows it)", onClick = function() Window.SetShown(false) end },
     }, anchor)
@@ -158,6 +160,9 @@ local function build()
     local close = W.CloseButton(title, function() Window.SetShown(false) end)
     close:SetSize(20, 20)
     close:SetPoint("RIGHT", -5, 0)
+    local gear = W.SettingsButton(title, "Settings", function() ST:Call("settings", ST.Settings.Toggle) end)
+    gear:SetSize(20, 20)
+    gear:SetPoint("RIGHT", close, "LEFT", -2, 0)
 
     -- Reset: a small text button.
     local reset = CreateFrame("Button", nil, title)
@@ -166,7 +171,7 @@ local function build()
     reset.text:SetPoint("CENTER")
     reset.text:SetText("Reset")
     reset:SetWidth(reset.text:GetStringWidth() + 12)
-    reset:SetPoint("RIGHT", close, "LEFT", -4, 0)
+    reset:SetPoint("RIGHT", gear, "LEFT", -2, 0)
     reset:SetScript("OnEnter", function(self)
         self.text:SetTextColor(Theme:Color("text"))
         W.ShowTooltip(self, { "Reset session", colorCode("textFaint") .. "Starts a new session now.|r" })
@@ -177,21 +182,16 @@ local function build()
     end)
     reset:SetScript("OnClick", function() ST:Call("reset", Session.Reset) end)
 
-    -- Rows.
+    -- Rows (placed by layoutRows, only the ones switched on in the settings).
     frame.rows = {}
-    local y = TITLE_H + 6
     for i, def in ipairs(ROWS) do
         local label = W.Text(frame, -1, "textDim")
-        label:SetPoint("TOPLEFT", PAD, -y)
         label:SetText(def[1])
         local value = W.Text(frame, 0, "text")
-        value:SetPoint("TOPRIGHT", -PAD, -y + 1)
         value:SetJustifyH("RIGHT")
-        frame.rows[i] = { value = value, def = def }
+        frame.rows[i] = { label = label, value = value, def = def }
         if def.click then
             local hit = CreateFrame("Button", nil, frame)
-            hit:SetPoint("TOPLEFT", 1, -(y - 2))
-            hit:SetPoint("TOPRIGHT", -1, -(y - 2))
             hit:SetHeight(ROW_H)
             hit.hl = W.Fill(hit, "selected", 1, "BACKGROUND")
             hit.hl:SetAllPoints()
@@ -205,34 +205,23 @@ local function build()
                 W.HideTooltip()
             end)
             hit:SetScript("OnClick", function() ST:Call("level times", ST.LevelsUI.Toggle) end)
+            frame.rows[i].hit = hit
             frame.levelTimesButton = hit
         end
-        y = y + ROW_H
     end
 
-    frame.rowsH = y + PAD - 4 -- height without the level bar
-
     -- Level progress: thin bar with the percent above it on the right.
-    y = y + 4
     frame.levelLabel = W.Text(frame, -2, "textFaint")
-    frame.levelLabel:SetPoint("TOPLEFT", PAD, -y)
     frame.levelPct = W.Text(frame, -2, "textFaint")
-    frame.levelPct:SetPoint("TOPRIGHT", -PAD, -y)
     frame.levelPct:SetJustifyH("RIGHT")
-    y = y + 14
     frame.track = frame:CreateTexture(nil, "BORDER")
-    frame.track:SetPoint("TOPLEFT", PAD, -y)
-    frame.track:SetPoint("TOPRIGHT", -PAD, -y)
     W.PixelSize(frame.track, frame, "h", 3)
     frame.track:SetColorTexture(Theme:Color("line"))
     frame.fill = frame:CreateTexture(nil, "ARTWORK")
     frame.fill:SetPoint("TOPLEFT", frame.track)
     frame.fill:SetPoint("BOTTOMLEFT", frame.track)
     W.OnAccent(function(r, g, b) frame.fill:SetColorTexture(r, g, b, 1) end)
-    y = y + 3 + PAD
-
-    frame:SetHeight(y)
-    frame.fullH = y
+    Window.Layout()
 
     frame:SetScript("OnShow", function()
         Window.Refresh()
@@ -250,6 +239,42 @@ local function build()
     restorePosition()
 end
 
+-- Place the rows switched on in the settings, then the level bar; sets the two heights.
+function Window.Layout()
+    if not frame then return end
+    local on = ST.db.settings.rows
+    local y = TITLE_H + 6
+    for _, row in ipairs(frame.rows) do
+        local shown = on[row.def.id] ~= false
+        row.label:SetShown(shown)
+        row.value:SetShown(shown)
+        if row.hit then row.hit:SetShown(shown) end
+        if shown then
+            row.label:ClearAllPoints()
+            row.label:SetPoint("TOPLEFT", PAD, -y)
+            row.value:ClearAllPoints()
+            row.value:SetPoint("TOPRIGHT", -PAD, -y + 1)
+            if row.hit then
+                row.hit:ClearAllPoints()
+                row.hit:SetPoint("TOPLEFT", 1, -(y - 2))
+                row.hit:SetPoint("TOPRIGHT", -1, -(y - 2))
+            end
+            y = y + ROW_H
+        end
+    end
+    frame.rowsH = y + PAD - 4 -- without the level bar
+    y = y + 4
+    frame.levelLabel:ClearAllPoints()
+    frame.levelLabel:SetPoint("TOPLEFT", PAD, -y)
+    frame.levelPct:ClearAllPoints()
+    frame.levelPct:SetPoint("TOPRIGHT", -PAD, -y)
+    y = y + 14
+    frame.track:ClearAllPoints()
+    frame.track:SetPoint("TOPLEFT", PAD, -y)
+    frame.track:SetPoint("TOPRIGHT", -PAD, -y)
+    frame.fullH = y + 3 + PAD
+end
+
 function Window.Refresh()
     if not frame or not frame:IsShown() then return end
     local s = Session.Stats()
@@ -262,8 +287,8 @@ function Window.Refresh()
         row.value:SetText(text)
         row.value:SetTextColor(Theme:Color(colorKey))
     end
-    -- The level bar is hidden at max level.
-    local showBar = s and not s.maxLevel and s.levelPct
+    -- The level bar: off in the settings or at max level.
+    local showBar = ST.db.settings.levelBar and s and not s.maxLevel and s.levelPct
     frame.levelLabel:SetShown(showBar and true or false)
     frame.levelPct:SetShown(showBar and true or false)
     frame.track:SetShown(showBar and true or false)
@@ -302,7 +327,23 @@ end)
 ST:OnSettingChanged(function(key)
     if not frame then return end
     if key == "scale" or key == "bgAlpha" then applyLook() end
+    if key == "rows" then Window.Layout() end
+    if key == "hideInCombat" and not ST.db.settings.hideInCombat and ST.db.window.shown ~= false then frame:Show() end
     Window.Refresh()
+end)
+
+function Window.ResetPosition()
+    ST.db.window.left, ST.db.window.top = nil, nil
+    if frame then restorePosition() end
+end
+
+-- Hide in combat (optional): out of the way while fighting, back after. The player's own
+-- show/hide choice (window.shown) is left alone.
+ST:RegisterEvent("PLAYER_REGEN_DISABLED", function()
+    if frame and ST.db.settings.hideInCombat and frame:IsShown() then frame:Hide() end
+end)
+ST:RegisterEvent("PLAYER_REGEN_ENABLED", function()
+    if frame and ST.db.settings.hideInCombat and ST.db.window.shown ~= false then frame:Show() end
 end)
 
 ST:AddSlashCommand("reset", function() Session.Reset() ST:Print("New session started.") end, "start a new session")

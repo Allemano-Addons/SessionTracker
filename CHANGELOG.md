@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.0
+- Settings window (gear button in the title, title menu, `/session settings`): font, text size,
+  accent (follow Hush / class / custom), background, scale; which rows show; level bar on/off;
+  hide in combat; lock position; reset window position.
+- New session "every login" (default) or "only on Reset": a manual session runs over several
+  logins and only counts time logged in. History entries now store that online duration.
+
 ## 0.2.0
 - Level times: how long each level took in /played time (plus real time, date and zone at the
   ding). The level in progress is exact from the first login (the game reports time played on

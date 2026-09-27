@@ -1,10 +1,13 @@
 -- Session: what the current play session has brought. Saved per character so a /reload
--- keeps it; a new login starts a new session (the old one goes to the history).
+-- keeps it. A new login starts a new session (the old one goes to the history), unless
+-- the setting newSession is "manual": then a session runs over several logins and only
+-- the time spent logged in counts.
 --
 -- SessionTrackerDB.chars[guid] = {
 --     name, class,
---     current = { start, lastSeen, startMoney, money, xp, xpMax, level, startLevel, xpGained },
---     history = { { start, stop, money, xpGained, levels }, ... }  (newest first, max 50)
+--     current = { start, lastSeen, active, stintStart, startMoney, money, xp, xpMax, level,
+--                 startLevel, xpGained },   -- active = online seconds of earlier logins
+--     history = { { start, stop, duration, money, xpGained, levels }, ... }  (newest first, max 50)
 -- }
 local _, ST = ...
 
@@ -40,14 +43,20 @@ local function char()
     return c
 end
 
+-- Seconds logged in during this session, up to `at`.
+local function onlineTime(s, at)
+    return (s.active or 0) + math.max(0, at - (s.stintStart or s.start))
+end
+
 -- Close the current session into the history (if it lasted long enough).
 local function archive(c)
     local s = c.current
     if not s then return end
     local stop = s.lastSeen or s.start
-    if stop - s.start >= MIN_SESSION then
+    local duration = onlineTime(s, stop)
+    if duration >= MIN_SESSION then
         tinsert(c.history, 1, {
-            start = s.start, stop = stop,
+            start = s.start, stop = stop, duration = duration,
             money = (s.money or s.startMoney or 0) - (s.startMoney or 0),
             xpGained = s.xpGained or 0,
             levels = (s.level or 0) - (s.startLevel or 0),
@@ -60,7 +69,7 @@ end
 local function newSession(c)
     local now = time()
     c.current = {
-        start = now, lastSeen = now,
+        start = now, lastSeen = now, active = 0, stintStart = now,
         startMoney = GetMoney(), money = GetMoney(),
         xp = UnitXP("player"), xpMax = UnitXPMax("player"),
         level = UnitLevel("player"), startLevel = UnitLevel("player"),
@@ -102,9 +111,18 @@ ST:RegisterEvent("PLAYER_ENTERING_WORLD", function(_, isInitialLogin, isReloadin
     else
         isNew = not s or (time() - (s.lastSeen or 0)) > STALE_AFTER
     end
-    if isNew or not s then
+    local now = time()
+    if not s then
+        newSession(c)
+    elseif isNew and ST.db.settings.newSession ~= "manual" then
         archive(c)
         newSession(c)
+    elseif isNew then
+        -- Manual sessions go on over logins: bank the online time of the last login.
+        s.active = onlineTime(s, s.lastSeen or now)
+        s.stintStart = now
+        s.money = GetMoney()
+        s.lastSeen = now
     else
         -- Same session: catch up on anything that happened while the UI was reloading.
         s.money = GetMoney()
@@ -156,7 +174,7 @@ function Session.Stats()
     if not s then return nil end
     local now = time()
     s.lastSeen = now
-    local elapsed = math.max(1, now - s.start)
+    local elapsed = math.max(1, onlineTime(s, now))
     local hours = elapsed / 3600
     local gold = (s.money or 0) - (s.startMoney or 0)
     local out = {

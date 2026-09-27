@@ -72,7 +72,21 @@ local DEFAULT_SETTINGS = {
     accent = "3FC7EB",
     bgAlpha = 0.9,
     scale = 1,
+    rows = { time = true, gold = true, goldHour = true, xp = true, xpHour = true, nextLevel = true, thisLevel = true },
+    levelBar = true,
+    hideInCombat = false,
+    newSession = "login", -- "login": every login starts one / "manual": only Reset does
 }
+
+local function fillDefaults(dst, src)
+    for k, v in pairs(src) do
+        if dst[k] == nil then
+            dst[k] = type(v) == "table" and CopyTable(v) or v
+        elseif type(v) == "table" and type(dst[k]) == "table" then
+            fillDefaults(dst[k], v)
+        end
+    end
+end
 
 local settingListeners = {}
 function ST:OnSettingChanged(fn) settingListeners[#settingListeners + 1] = fn end
@@ -89,9 +103,7 @@ local function initDB()
     if type(SessionTrackerDB) ~= "table" then SessionTrackerDB = {} end
     local db = SessionTrackerDB
     db.settings = db.settings or {}
-    for k, v in pairs(DEFAULT_SETTINGS) do
-        if db.settings[k] == nil then db.settings[k] = v end
-    end
+    fillDefaults(db.settings, DEFAULT_SETTINGS)
     db.window = db.window or {}
     db.chars = db.chars or {} -- keyed by player GUID
     db.errors = db.errors or {}

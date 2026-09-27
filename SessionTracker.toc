@@ -1,7 +1,7 @@
 ## Interface: 16001
 ## Title: SessionTracker
 ## Notes: Gold, XP and time for your current play session, and how long each level took
-## Version: 0.2.0
+## Version: 0.3.0
 ## SavedVariables: SessionTrackerDB
 ## OptionalDeps: Hush
 
@@ -12,3 +12,4 @@ Session.lua
 Levels.lua
 UI\Window.lua
 UI\Levels.lua
+UI\Settings.lua

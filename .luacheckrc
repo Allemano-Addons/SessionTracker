@@ -5,7 +5,7 @@ exclude_files = { "Tests/**" }
 
 -- The only globals SessionTracker may write.
 globals = {
-    "SessionTrackerDB", "SessionTrackerFrame", "SessionTrackerLevelsFrame",
+    "SessionTrackerDB", "SessionTrackerFrame", "SessionTrackerLevelsFrame", "SessionTrackerSettingsFrame",
     "SLASH_SESSIONTRACKER1", "SLASH_SESSIONTRACKER2", "SlashCmdList",
 }
 

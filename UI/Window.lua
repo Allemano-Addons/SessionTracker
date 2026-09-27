@@ -73,6 +73,13 @@ local ROWS = {
         if not s.timeToLevel then return "...", "textFaint" end
         return duration(s.timeToLevel)
     end },
+    -- /played on the current level; click opens all level times.
+    { "This level", function(s)
+        if s.maxLevel then return "max level", "textFaint" end
+        local t = ST.Levels.CurrentLevelTime()
+        if not t then return "...", "textFaint" end
+        return duration(t)
+    end, click = true },
 }
 
 -- ---------------------------------------------------------------------------
@@ -104,6 +111,7 @@ local function openMenu(anchor)
     W.OpenMenu({
         { text = "Session", title = true },
         { text = "Reset session", onClick = function() Session.Reset() end },
+        { text = "Level times", onClick = function() ST.LevelsUI.Toggle() end },
         { text = "Lock position", checked = db.locked == true, onClick = function() db.locked = not db.locked or nil end },
         { text = "Hide (/session shows it)", onClick = function() Window.SetShown(false) end },
     }, anchor)
@@ -180,6 +188,25 @@ local function build()
         value:SetPoint("TOPRIGHT", -PAD, -y + 1)
         value:SetJustifyH("RIGHT")
         frame.rows[i] = { value = value, def = def }
+        if def.click then
+            local hit = CreateFrame("Button", nil, frame)
+            hit:SetPoint("TOPLEFT", 1, -(y - 2))
+            hit:SetPoint("TOPRIGHT", -1, -(y - 2))
+            hit:SetHeight(ROW_H)
+            hit.hl = W.Fill(hit, "selected", 1, "BACKGROUND")
+            hit.hl:SetAllPoints()
+            hit.hl:Hide()
+            hit:SetScript("OnEnter", function(self)
+                self.hl:Show()
+                W.ShowTooltip(self, { "Time played on this level", colorCode("textFaint") .. "Click: how long every level took|r" })
+            end)
+            hit:SetScript("OnLeave", function(self)
+                self.hl:Hide()
+                W.HideTooltip()
+            end)
+            hit:SetScript("OnClick", function() ST:Call("level times", ST.LevelsUI.Toggle) end)
+            frame.levelTimesButton = hit
+        end
         y = y + ROW_H
     end
 

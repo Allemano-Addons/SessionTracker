@@ -55,7 +55,10 @@ time = function() return now end
 CopyTable = function(t) local c = {} for k, v in pairs(t) do c[k] = type(v) == "table" and CopyTable(v) or v end return c end
 local errors = {}
 geterrorhandler = function() return function(e) errors[#errors + 1] = e; print("ERROR: " .. tostring(e)) end end
-C_Timer = { After = function(_, fn) fn() end }
+-- Timers: 0 s (next frame) and long safety timers wait for runQueued(); the rest run at once.
+local queued = {}
+C_Timer = { After = function(d, fn) if d == 0 or d >= 10 then queued[#queued + 1] = fn else fn() end end }
+local function runQueued() local q = queued; queued = {}; for _, fn in ipairs(q) do fn() end end
 C_AddOns = { GetAddOnMetadata = function() return "test" end }
 C_Timer.NewTicker = function() return { Cancel = function() end } end
 GetPhysicalScreenSize = function() return 2560, 1440 end
@@ -74,6 +77,11 @@ UnitXP = function() return P.xp end
 UnitXPMax = function() return P.xpMax end
 GetMoney = function() return P.money end
 GetMaxPlayerLevel = function() return P.maxLevel end
+GetRealZoneText = function() return "The Barrens" end
+-- /played: requests are counted; the chat frames print through ChatFrame_DisplayTimePlayed.
+local playedRequests, chatPrints = 0, 0
+RequestTimePlayed = function() playedRequests = playedRequests + 1 end
+ChatFrame_DisplayTimePlayed = function() chatPrints = chatPrints + 1 end
 
 local ST = {}
 for line in io.lines("SessionTracker.toc") do
@@ -184,9 +192,74 @@ step("title menu", function()
     ST.Widgets.OpenMenu = function(list) items = list end
     for f, s in pairs(scripts) do if s.OnMouseUp and s.OnDragStart then s.OnMouseUp(f, "RightButton") end end
     ST.Widgets.OpenMenu = realOpen
-    assert(items and #items == 4, "menu not opened")
+    assert(items and #items == 5, "menu not opened")
 end)
 step("slash errors", function() SlashCmdList.SESSIONTRACKER("errors") end)
+
+-- Level times.
+local function c() return ST.db.chars["Player-1-A"] end
+step("login learns the start of the current level, chat line hidden", function()
+    runQueued()
+    P.level, P.xp, P.xpMax = 5, 100, 1000
+    local before = playedRequests
+    fire("PLAYER_ENTERING_WORLD", true, false)
+    assert(playedRequests == before + 1, "no /played request at login")
+    fire("TIME_PLAYED_MSG", 5000, 600)
+    ChatFrame_DisplayTimePlayed() -- the chat frames print during the same event
+    assert(chatPrints == 0, "our /played request was printed in chat")
+    runQueued()
+    ChatFrame_DisplayTimePlayed() -- the player's own /played later
+    assert(chatPrints == 1, "the player's own /played was hidden")
+    assert(c().levelStart.level == 5 and c().levelStart.playedTotal == 4400, "level start wrong")
+    now = now + 300
+    assert(ST.Levels.CurrentLevelTime() == 900, "current level time " .. tostring(ST.Levels.CurrentLevelTime()))
+end)
+step("ding logs the level that ended", function()
+    P.level = 6
+    fire("PLAYER_LEVEL_UP", 6)
+    now = now + 10
+    fire("TIME_PLAYED_MSG", 5310, 10)
+    runQueued()
+    local e = c().levelLog[5]
+    assert(e and e.played == 900, "level 5 played " .. tostring(e and e.played))
+    assert(e.wall == nil and e.zone == "The Barrens", "wall/zone")
+    assert(c().levelStart.level == 6 and c().levelStart.playedTotal == 5300, "new level start")
+end)
+step("second ding has real time too", function()
+    now = now + 7200
+    P.level = 7
+    fire("PLAYER_LEVEL_UP", 7)
+    fire("TIME_PLAYED_MSG", 5300 + 2000, 0)
+    runQueued()
+    local e = c().levelLog[6]
+    assert(e.played == 2000 and e.wall == 7210, "level 6: " .. tostring(e.played) .. " / " .. tostring(e.wall))
+    local list = ST.Levels.List()
+    assert(#list == 3 and list[3].current and list[3].level == 7, "list")
+end)
+step("two levels at once", function()
+    P.level = 9
+    fire("PLAYER_LEVEL_UP", 8)
+    fire("PLAYER_LEVEL_UP", 9)
+    fire("TIME_PLAYED_MSG", 8000, 0)
+    runQueued()
+    assert(c().levelLog[7].played == nil and c().levelLog[8].played == nil, "in-between levels should have no played time")
+    assert(c().levelStart.level == 9 and c().levelStart.playedTotal == 8000, "start of level 9")
+end)
+step("level times window and the This level row", function()
+    ST.Window.Refresh()
+    assert(rowText(7) and rowText(7) ~= "...", "This level row: " .. tostring(rowText(7)))
+    local hit = _G.SessionTrackerFrame.levelTimesButton
+    scripts[hit].OnEnter(hit)
+    scripts[hit].OnClick(hit)
+    local f = _G.SessionTrackerLevelsFrame
+    assert(f and f._shown, "level times window not shown")
+    local rows = 0
+    for _, row in ipairs(f.rows) do if row._shown and row.entry then rows = rows + 1 end end
+    assert(rows == 5, "rows " .. rows)
+    scripts[f.rows[1]].OnEnter(f.rows[1])
+    SlashCmdList.SESSIONTRACKER("levels")
+    assert(not f._shown, "did not close")
+end)
 
 print(#errors == 0 and "ALL OK" or (#errors .. " error(s)"))
 os.exit(#errors == 0 and 0 or 1)

@@ -5,7 +5,7 @@ exclude_files = { "Tests/**" }
 
 -- The only globals SessionTracker may write.
 globals = {
-    "SessionTrackerDB", "SessionTrackerFrame",
+    "SessionTrackerDB", "SessionTrackerFrame", "SessionTrackerLevelsFrame",
     "SLASH_SESSIONTRACKER1", "SLASH_SESSIONTRACKER2", "SlashCmdList",
 }
 
@@ -17,4 +17,5 @@ read_globals = {
     "GetAddOnMetadata", "C_AddOns", "C_Timer", "LibStub", "HushDB", "BreakUpLargeNumbers",
     "CUSTOM_CLASS_COLORS", "RAID_CLASS_COLORS", "GetPhysicalScreenSize",
     "UnitGUID", "UnitName", "UnitClass", "UnitLevel", "UnitXP", "UnitXPMax", "GetMoney", "GetMaxPlayerLevel",
+    "RequestTimePlayed", "ChatFrameUtil", "GetRealZoneText",
 }

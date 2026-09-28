@@ -3,7 +3,9 @@
 local addonName, ST = ...
 
 ST.name = addonName
-ST.LOGO = "Interface\\AddOns\\" .. addonName .. "\\Media\\logo" -- 64x64 TGA (Media/logo.png is the source)
+-- The SessionTracker mark (Media/wow/mark.tga, 64x64, own colors); Media/wow/icon.tga is the
+-- addon list icon (TOC). Media/png and Media/svg hold the source pictures.
+ST.LOGO = "Interface\\AddOns\\" .. addonName .. "\\Media\\wow\\mark"
 
 function ST:Print(...)
     local msg = strjoin(" ", tostringall(...))

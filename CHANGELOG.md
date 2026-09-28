@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.3
+- New SessionTracker logo (Allemano Addons family): Media/wow/icon.tga in the addon list,
+  Media/wow/mark.tga left of the "Session" title. Media/png and Media/svg are the sources.
+  The old Media/logo.tga and logo.png are gone.
+
 ## 0.3.2
 - SessionTracker logo: in the game's addon list (IconTexture) and left of the "Session" title.
   Media/logo.tga (64x64) is made from Media/logo.png.

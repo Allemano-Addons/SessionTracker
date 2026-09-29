@@ -7,7 +7,7 @@ local Theme, W, Session = ST.Theme, ST.Widgets, ST.Session
 local Window = {}
 ST.Window = Window
 
-local WIDTH, TITLE_H, ROW_H, PAD = 250, 30, 20, 10
+local WIDTH, TITLE_H, ROW_H, PAD, BAR_H = 250, 38, 22, 12, 6
 
 local frame, ticker
 
@@ -127,14 +127,17 @@ local function build()
     frame:SetWidth(WIDTH)
     frame.bg = W.Fill(frame, "window", 1)
     frame.bg:SetAllPoints()
-    W.Border(frame, "line")
+    W.Panel(frame, frame.bg, W.Border(frame, "line"))
 
-    -- Title: drag to move, right-click for the menu.
+    -- Title: drag to move, right-click for the menu (reset, settings, lock, hide).
     local title = CreateFrame("Frame", nil, frame)
     title:SetPoint("TOPLEFT")
     title:SetPoint("TOPRIGHT")
     title:SetHeight(TITLE_H)
-    W.Line(title, "bottom", "line")
+    local sep = W.Line(title, "bottom", "line")
+    sep:ClearAllPoints()
+    sep:SetPoint("BOTTOMLEFT", 1, 0)
+    sep:SetPoint("BOTTOMRIGHT", -1, 0)
     title:EnableMouse(true)
     title:RegisterForDrag("LeftButton")
     title:SetScript("OnDragStart", function()
@@ -148,67 +151,49 @@ local function build()
     title:SetScript("OnMouseUp", function(self, button)
         if button == "RightButton" then ST:Call("menu", openMenu, self) end
     end)
-    local name = W.Text(title, 1, "text")
-    -- Logo left of the name (the name moves back to the edge if the texture fails).
+    title:SetScript("OnEnter", function(self)
+        W.ShowTooltip(self, { "Session", colorCode("textFaint") .. "Drag to move. Right-click: reset, settings, lock, hide.|r" })
+    end)
+    title:SetScript("OnLeave", W.HideTooltip)
+
+    -- The SessionTracker mark (own colors), then the name.
+    local name = W.Text(title, 2, "text")
     local logo = title:CreateTexture(nil, "ARTWORK")
     logo:SetSize(18, 18)
-    logo:SetPoint("LEFT", PAD - 3, 0)
+    logo:SetPoint("LEFT", PAD, 0)
     if logo:SetTexture(ST.LOGO) == false then
         logo:Hide()
         name:SetPoint("LEFT", PAD, 0)
     else
-        name:SetPoint("LEFT", logo, "RIGHT", 4, 0)
+        name:SetPoint("LEFT", logo, "RIGHT", 6, 0)
     end
     name:SetText("Session")
-    local accent = title:CreateTexture(nil, "ARTWORK")
-    accent:SetPoint("TOPLEFT", name, "BOTTOMLEFT", 0, -2)
-    accent:SetSize(14, 2)
-    W.OnAccent(function(r, g, b) accent:SetColorTexture(r, g, b, 1) end)
 
-    -- "Levels": opens/closes the level times window; accent-colored while it is open.
+    -- "Levels": an outlined button that opens/closes level times (accent while open).
     local levels = CreateFrame("Button", nil, title)
-    levels:SetHeight(20)
-    levels.text = W.Text(levels, -1, "textFaint")
-    levels.text:SetPoint("CENTER")
+    levels:SetHeight(22)
+    levels.bg = W.Fill(levels, "field", 1)
+    levels.bg:SetAllPoints()
+    W.Round(levels.bg, Theme.radius.control)
+    levels.border = W.RoundBorder(W.Border(levels, "line"), Theme.radius.control)
+    levels.text = W.Text(levels, -1, "textDim")
+    levels.text:SetPoint("CENTER", 0, 0)
     levels.text:SetText("Levels")
-    levels:SetWidth(levels.text:GetStringWidth() + 12)
-    levels:SetPoint("LEFT", name, "RIGHT", 8, 0)
+    levels:SetWidth(levels.text:GetStringWidth() + 20)
+    levels:SetPoint("RIGHT", -PAD + 2, 0)
     levels:SetScript("OnEnter", function(self)
-        self.text:SetTextColor(Theme:Color("text"))
+        self.hover = true
+        Window.UpdateLevelsButton()
         W.ShowTooltip(self, { "Level times", colorCode("textFaint") .. "How long every level took|r" })
     end)
-    levels:SetScript("OnLeave", function()
+    levels:SetScript("OnLeave", function(self)
+        self.hover = nil
         Window.UpdateLevelsButton()
         W.HideTooltip()
     end)
     levels:SetScript("OnClick", function() ST:Call("levels button", ST.LevelsUI.Toggle) end)
     frame.levelsButton = levels
     W.OnAccent(function() Window.UpdateLevelsButton() end)
-
-    local close = W.CloseButton(title, function() Window.SetShown(false) end)
-    close:SetSize(20, 20)
-    close:SetPoint("RIGHT", -5, 0)
-    local gear = W.SettingsButton(title, "Settings", function() ST:Call("settings", ST.Settings.Toggle) end)
-    gear:SetSize(20, 20)
-    gear:SetPoint("RIGHT", close, "LEFT", -2, 0)
-
-    -- Reset: a small text button.
-    local reset = CreateFrame("Button", nil, title)
-    reset:SetHeight(20)
-    reset.text = W.Text(reset, -1, "textFaint")
-    reset.text:SetPoint("CENTER")
-    reset.text:SetText("Reset")
-    reset:SetWidth(reset.text:GetStringWidth() + 12)
-    reset:SetPoint("RIGHT", gear, "LEFT", -2, 0)
-    reset:SetScript("OnEnter", function(self)
-        self.text:SetTextColor(Theme:Color("text"))
-        W.ShowTooltip(self, { "Reset session", colorCode("textFaint") .. "Starts a new session now.|r" })
-    end)
-    reset:SetScript("OnLeave", function(self)
-        self.text:SetTextColor(Theme:Color("textFaint"))
-        W.HideTooltip()
-    end)
-    reset:SetScript("OnClick", function() ST:Call("reset", Session.Reset) end)
 
     -- Rows (placed by layoutRows, only the ones switched on in the settings).
     frame.rows = {}
@@ -224,6 +209,7 @@ local function build()
             hit.hl = W.Fill(hit, "selected", 1, "BACKGROUND")
             hit.hl:SetAllPoints()
             hit.hl:Hide()
+            W.Round(hit.hl, Theme.radius.small)
             hit:SetScript("OnEnter", function(self)
                 self.hl:Show()
                 W.ShowTooltip(self, { "Time played on this level", colorCode("textFaint") .. "Click: how long every level took|r" })
@@ -238,16 +224,18 @@ local function build()
         end
     end
 
-    -- Level progress: thin bar with the percent above it on the right.
+    -- Level progress: a rounded bar with "Level N" and the percent above it.
     frame.levelLabel = W.Text(frame, -2, "textFaint")
     frame.levelPct = W.Text(frame, -2, "textFaint")
     frame.levelPct:SetJustifyH("RIGHT")
     frame.track = frame:CreateTexture(nil, "BORDER")
-    W.PixelSize(frame.track, frame, "h", 3)
     frame.track:SetColorTexture(Theme:Color("line"))
+    W.Round(frame.track, BAR_H / 2)
+    frame.track:SetHeight(BAR_H)
     frame.fill = frame:CreateTexture(nil, "ARTWORK")
-    frame.fill:SetPoint("TOPLEFT", frame.track)
-    frame.fill:SetPoint("BOTTOMLEFT", frame.track)
+    frame.fill:SetColorTexture(Theme:Accent())
+    W.Round(frame.fill, BAR_H / 2)
+    frame.fill:SetHeight(BAR_H) -- placed by Window.Layout (a rounded texture can't be an anchor)
     W.OnAccent(function(r, g, b) frame.fill:SetColorTexture(r, g, b, 1) end)
     Window.Layout()
     Window.UpdateLevelsButton()
@@ -272,7 +260,7 @@ end
 function Window.Layout()
     if not frame then return end
     local on = ST.db.settings.rows
-    local y = TITLE_H + 6
+    local y = TITLE_H + 9
     for _, row in ipairs(frame.rows) do
         local shown = on[row.def.id] ~= false
         row.label:SetShown(shown)
@@ -285,23 +273,25 @@ function Window.Layout()
             row.value:SetPoint("TOPRIGHT", -PAD, -y + 1)
             if row.hit then
                 row.hit:ClearAllPoints()
-                row.hit:SetPoint("TOPLEFT", 1, -(y - 2))
-                row.hit:SetPoint("TOPRIGHT", -1, -(y - 2))
+                row.hit:SetPoint("TOPLEFT", 4, -(y - 4))
+                row.hit:SetPoint("TOPRIGHT", -4, -(y - 4))
             end
             y = y + ROW_H
         end
     end
-    frame.rowsH = y + PAD - 4 -- without the level bar
-    y = y + 4
+    frame.rowsH = y + PAD - 8 -- without the level bar
+    y = y + 6
     frame.levelLabel:ClearAllPoints()
     frame.levelLabel:SetPoint("TOPLEFT", PAD, -y)
     frame.levelPct:ClearAllPoints()
     frame.levelPct:SetPoint("TOPRIGHT", -PAD, -y)
-    y = y + 14
+    y = y + 16
     frame.track:ClearAllPoints()
     frame.track:SetPoint("TOPLEFT", PAD, -y)
     frame.track:SetPoint("TOPRIGHT", -PAD, -y)
-    frame.fullH = y + 3 + PAD
+    frame.fill:ClearAllPoints()
+    frame.fill:SetPoint("TOPLEFT", PAD, -y)
+    frame.fullH = y + BAR_H + PAD
 end
 
 function Window.Refresh()
@@ -364,10 +354,15 @@ end)
 function Window.UpdateLevelsButton()
     local b = frame and frame.levelsButton
     if not b then return end
+    -- Open: accent outline and text. Closed: neutral outline, dim text (brighter on hover).
     if ST.LevelsUI.IsOpen() then
-        b.text:SetTextColor(Theme:Accent())
+        local r, g, bl = Theme:Accent()
+        b.text:SetTextColor(r, g, bl)
+        b.border:SetColor(r, g, bl, 1)
     else
-        b.text:SetTextColor(Theme:Color("textFaint"))
+        b.text:SetTextColor(Theme:Color(b.hover and "text" or "textDim"))
+        local r, g, bl = Theme:Color(b.hover and "textFaint" or "line")
+        b.border:SetColor(r, g, bl, 1)
     end
 end
 

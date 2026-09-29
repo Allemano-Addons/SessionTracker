@@ -7,7 +7,7 @@ local Theme, W = ST.Theme, ST.Widgets
 local Settings = {}
 ST.Settings = Settings
 
-local WIDTH, ROW, LABEL_X, CONTROL_X, TITLE_H = 460, 30, 16, 170, 40
+local WIDTH, ROW, LABEL_X, CONTROL_X, TITLE_H = 490, 30, 16, 170, 40
 local frame
 local controls = {} -- each has :refresh(), called when the window opens
 
@@ -50,7 +50,8 @@ local function textButton(parent, label, onClick)
     b:SetHeight(24)
     b.bg = W.Fill(b, "field", 1)
     b.bg:SetAllPoints()
-    W.Border(b, "line")
+    W.Round(b.bg)
+    W.RoundBorder(W.Border(b, "line"))
     b.text = W.Text(b, -1, "text")
     b.text:SetPoint("CENTER")
     b.text:SetText(label)
@@ -73,7 +74,7 @@ local function build()
     frame:SetWidth(WIDTH)
     frame.bg = W.Fill(frame, "window", 0.98)
     frame.bg:SetAllPoints()
-    W.Border(frame, "line")
+    W.Panel(frame, frame.bg, W.Border(frame, "line"))
 
     local title = CreateFrame("Frame", nil, frame)
     title:SetPoint("TOPLEFT")
@@ -111,7 +112,8 @@ local function build()
 
     local swatches = CreateFrame("Frame", nil, frame)
     local accent = W.Segment(frame, {
-        { value = "hush", label = Theme.HasHush() and "Follow Hush" or "Default" },
+        { value = "own", label = "Session" },
+        { value = "hush", label = "Follow Hush" },
         { value = "class", label = "Class" },
         { value = "custom", label = "Custom" },
     }, function(v)

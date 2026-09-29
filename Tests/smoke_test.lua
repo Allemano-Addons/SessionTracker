@@ -32,13 +32,22 @@ local function mock(kind)
         if k == "SetText" then return function(self, v) self._text = v end end
         if k == "GetText" then return function(self) return self._text or "" end end
         if k == "GetFont" then return function() return "Fonts\\FRIZQT__.TTF", 12 end end
-        if k == "CreateTexture" or k == "CreateFontString" or k == "CreateLine" then return function() return mock(k) end end
+        if k == "CreateTexture" or k == "CreateFontString" or k == "CreateLine" then
+            return function(self) local m = mock(k); m._parent = self; return m end
+        end
+        -- Geometry and layers used by W.Round / W.RoundBorder (same as AltBoard's test).
+        if k == "GetParent" then return function(self) return self._parent or UIParent end end
+        if k == "GetNumPoints" then return function() return 0 end end
+        if k == "GetSize" then return function() return 0, 0 end end
+        if k == "GetDrawLayer" then return function() return "ARTWORK", 0 end end
+        if k == "GetAlpha" then return function() return 1 end end
+        if k == "SetTexture" then return function() return true end end
         if GETTERS[k] ~= nil then local v = GETTERS[k]; return function() return v end end
         return function() end
     end })
 end
 
-CreateFrame = function(kind, name) local f = mock(kind); f._shown = true; if name then _G[name] = f end; return f end
+CreateFrame = function(kind, name, parent) local f = mock(kind); f._shown = true; f._parent = parent; if name then _G[name] = f end; return f end
 UIParent = mock("Frame")
 DEFAULT_CHAT_FRAME = { AddMessage = function(_, m) print("[chat] " .. m) end }
 UISpecialFrames = {}
@@ -47,6 +56,7 @@ strjoin = function(sep, ...) return table.concat({ ... }, sep) end
 tostringall = function(...) local t = { ... } for i = 1, select("#", ...) do t[i] = tostring(t[i]) end return unpack(t, 1, select("#", ...)) end
 strsplit = function(sep, s) local t = {} for part in (s .. sep):gmatch("(.-)" .. sep:gsub("%p", "%%%0")) do t[#t + 1] = part end return unpack(t) end
 strtrim = function(s) return (s:gsub("^%s+", ""):gsub("%s+$", "")) end
+abs = math.abs
 strlower, strupper, tinsert, tremove, sort, floor, ceil, min, max, format = string.lower, string.upper, table.insert, table.remove, table.sort, math.floor, math.ceil, math.min, math.max, string.format
 wipe = function(t) for k in pairs(t) do t[k] = nil end return t end
 date = os.date
@@ -177,7 +187,7 @@ step("max level", function()
     ST.Window.Refresh()
     assert(ST.Session.Stats().maxLevel, "not max level")
     assert(rowText(6) == "max level", "next level row: " .. tostring(rowText(6)))
-    assert(not _G.SessionTrackerFrame.track._shown, "level bar still shown")
+    assert(not _G.SessionTrackerFrame.track:IsShown(), "level bar still shown")
 end)
 step("hide and show", function()
     SlashCmdList.SESSIONTRACKER("")
@@ -256,7 +266,8 @@ step("level times window and the This level row", function()
     assert(f and f._shown, "level times window not shown")
     local rows = 0
     for _, row in ipairs(f.rows) do if row._shown and row.entry then rows = rows + 1 end end
-    assert(rows == 5, "rows " .. rows)
+    assert(rows == 4, "rows " .. rows) -- finished levels only (5, 6, 7, 8), newest first
+    assert(f.rows[1].entry.level == 8, "newest level should be first")
     scripts[f.rows[1]].OnEnter(f.rows[1])
     SlashCmdList.SESSIONTRACKER("levels")
     assert(not f._shown, "did not close")
@@ -288,7 +299,7 @@ step("row switched off disappears, window gets shorter", function()
     ST.db.settings.rows.gold = false
     ST:SetSetting("rows", ST.db.settings.rows)
     assert(not main().rows[2].label._shown and not main().rows[2].value._shown, "gold row still shown")
-    assert(main().rowsH == full - 20, "height " .. main().rowsH .. " vs " .. full)
+    assert(main().rowsH == full - 22, "height " .. main().rowsH .. " vs " .. full)
     ST.db.settings.rows.thisLevel = false
     ST:SetSetting("rows", ST.db.settings.rows)
     assert(not main().levelTimesButton._shown, "click area of a hidden row still shown")
@@ -298,9 +309,9 @@ end)
 step("level bar setting", function()
     P.level = 9
     ST:SetSetting("levelBar", false)
-    assert(not main().track._shown, "bar shown although off")
+    assert(not main().track:IsShown(), "bar shown although off")
     ST:SetSetting("levelBar", true)
-    assert(main().track._shown, "bar not back")
+    assert(main().track:IsShown(), "bar not back")
 end)
 step("hide in combat", function()
     ST:SetSetting("hideInCombat", true)
@@ -339,7 +350,7 @@ step("Levels button toggles level times", function()
     assert(b, "no Levels button")
     scripts[b].OnClick(b)
     local f = _G.SessionTrackerLevelsFrame
-    assert(f._shown and ST.LevelsUI.IsOpen(), "not opened by the button")
+    assert(f._shown and ST.LevelsUI.IsOpen(), "not opened by the button: " .. tostring(ST.errors[#ST.errors] and ST.errors[#ST.errors].msg))
     for _, name in ipairs(UISpecialFrames) do
         assert(name ~= "SessionTrackerLevelsFrame", "ESC would close level times")
     end

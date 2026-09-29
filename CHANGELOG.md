@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.4.0
+- Allemano look, like AltBoard and Allemano Raid Tools: rounded panels, the neutral palette,
+  the SessionTracker mark and "Session" in the title, an outlined "Levels" button (amber while
+  level times are open) and a rounded level bar.
+- SessionTracker amber (E8A93B) is the default accent (new accent choice "Session"; "Follow
+  Hush", "Class" and "Custom" are still there). Old "Follow Hush" settings move to amber once.
+- Level times: finished levels only, newest first, level and time (hover for real time, date
+  and zone). The X shows while the mouse is over the window; the Levels button closes it too.
+- Reset, Settings, Lock and Hide moved from the title bar to the title's right-click menu.
+
 ## 0.3.3
 - New SessionTracker logo (Allemano Addons family): Media/wow/icon.tga in the addon list,
   Media/wow/mark.tga left of the "Session" title. Media/png and Media/svg are the sources.

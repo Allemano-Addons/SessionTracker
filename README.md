@@ -4,7 +4,7 @@ A small window for WoW Forever that shows what your current play session has bro
 time, gold (+/-), gold per hour, XP, XP per hour and time to the next level.
 
 - `/session` shows or hides the window. `/session reset` starts a new session.
-- Drag the title to move it; right-click the title for Reset / Lock / Hide.
+- Drag the title to move it; right-click the title for Reset / Settings / Lock / Hide.
 - A /reload keeps the session; logging in again starts a new one.
 - The "Levels" button next to the title (or `/session levels`): how long every level took (/played time).
 - Gear button or `/session settings`: look, rows, hide in combat, and whether a new session

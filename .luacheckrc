@@ -12,7 +12,7 @@ globals = {
 -- WoW API used (read-only). Extend as new APIs are used.
 read_globals = {
     "_G", "strjoin", "strsplit", "strtrim", "strlower", "strupper", "tostringall", "tinsert", "tremove",
-    "wipe", "sort", "floor", "ceil", "min", "max", "format", "date", "time", "CopyTable", "geterrorhandler",
+    "wipe", "sort", "floor", "ceil", "min", "max", "abs", "format", "date", "time", "CopyTable", "geterrorhandler",
     "CreateFrame", "UIParent", "DEFAULT_CHAT_FRAME", "UISpecialFrames", "GetCursorPosition", "IsShiftKeyDown",
     "GetAddOnMetadata", "C_AddOns", "C_Timer", "LibStub", "HushDB", "BreakUpLargeNumbers",
     "CUSTOM_CLASS_COLORS", "RAID_CLASS_COLORS", "GetPhysicalScreenSize",

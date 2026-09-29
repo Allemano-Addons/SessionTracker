@@ -9,7 +9,7 @@ ST.LOGO = "Interface\\AddOns\\" .. addonName .. "\\Media\\wow\\mark"
 
 function ST:Print(...)
     local msg = strjoin(" ", tostringall(...))
-    DEFAULT_CHAT_FRAME:AddMessage("|cff3fc7ebSession|r " .. msg)
+    DEFAULT_CHAT_FRAME:AddMessage("|cffe8a93bSession|r " .. msg)
 end
 
 -- ---------------------------------------------------------------------------
@@ -71,8 +71,8 @@ end)
 local DEFAULT_SETTINGS = {
     font = "Friz Quadrata",
     textSize = "M",
-    accentMode = "hush",
-    accent = "3FC7EB",
+    accentMode = "own",   -- own (SessionTracker amber) / hush (follow Hush if installed) / class / custom
+    accent = "E8A93B",  -- used by "custom"
     bgAlpha = 0.9,
     scale = 1,
     rows = { time = true, gold = true, goldHour = true, xp = true, xpHour = true, nextLevel = true, thisLevel = true },

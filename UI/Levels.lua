@@ -1,5 +1,6 @@
--- Level times window: one row per level with its /played time and a bar to compare.
--- Hover a row for real time, date and zone. The level in progress is shown last.
+-- Level times window (Allemano look): one row per finished level with its /played time,
+-- newest first. Hover a row for real time, date and zone. The level in progress is on
+-- the session window's bar, not here.
 local _, ST = ...
 
 local Theme, W, Levels = ST.Theme, ST.Widgets, ST.Levels
@@ -7,11 +8,19 @@ local Theme, W, Levels = ST.Theme, ST.Widgets, ST.Levels
 local LevelsUI = {}
 ST.LevelsUI = LevelsUI
 
-local WIDTH, TITLE_H, ROW_H, PAD, MAX_ROWS = 300, 30, 20, 10, 20
-local LABEL_W, TIME_W = 78, 64
+local WIDTH, TITLE_H, ROW_H, PAD, MAX_ROWS = 210, 38, 24, 14, 15
 
 local frame, ticker
 local list, offset = {}, 0
+
+-- Finished levels, newest first.
+local function finishedLevels()
+    local out = {}
+    for _, e in ipairs(Levels.List()) do
+        if not e.current then tinsert(out, 1, e) end
+    end
+    return out
+end
 
 local function duration(sec)
     if not sec then return "?" end
@@ -41,65 +50,48 @@ local function rowTooltip(row)
     W.ShowTooltip(row, lines)
 end
 
+-- The X only shows while the mouse is over the window (the look has no close button;
+-- the Levels button on the session window also closes it).
+local function updateClose()
+    if frame and frame.close then frame.close:SetShown(frame:IsMouseOver()) end
+end
+
 local function createRow(parent)
     local row = CreateFrame("Button", nil, parent)
     row:SetHeight(ROW_H)
     row.hl = W.Fill(row, "selected", 1)
     row.hl:SetAllPoints()
     row.hl:Hide()
+    W.Round(row.hl, Theme.radius.small)
     row.label = W.Text(row, -1, "textDim")
     row.label:SetPoint("LEFT", PAD, 0)
-    row.time = W.Text(row, -1, "text")
+    row.time = W.Text(row, 0, "text")
     row.time:SetPoint("RIGHT", -PAD, 0)
     row.time:SetJustifyH("RIGHT")
-    row.track = row:CreateTexture(nil, "BORDER")
-    row.track:SetPoint("LEFT", PAD + LABEL_W, 0)
-    row.track:SetPoint("RIGHT", -(PAD + TIME_W), 0)
-    W.PixelSize(row.track, row, "h", 4)
-    row.track:SetColorTexture(Theme:Color("line"))
-    row.fill = row:CreateTexture(nil, "ARTWORK")
-    row.fill:SetPoint("TOPLEFT", row.track)
-    row.fill:SetPoint("BOTTOMLEFT", row.track)
     row:SetScript("OnEnter", function(self)
         self.hl:Show()
         rowTooltip(self)
+        updateClose()
     end)
     row:SetScript("OnLeave", function(self)
         self.hl:Hide()
         W.HideTooltip()
+        updateClose()
     end)
     return row
 end
 
 function LevelsUI.Refresh()
     if not frame or not frame:IsShown() then return end
-    list = Levels.List()
-    local longest, total, known = 1, 0, 0
-    for _, e in ipairs(list) do
-        if e.played then
-            longest = math.max(longest, e.played)
-            if not e.current then total, known = total + e.played, known + 1 end
-        end
-    end
+    list = finishedLevels()
     offset = math.max(0, math.min(offset, #list - MAX_ROWS))
-    local barW = WIDTH - 2 * PAD - LABEL_W - TIME_W
     local shown = math.min(#list, MAX_ROWS)
     for i = 1, MAX_ROWS do
         local row, e = frame.rows[i], list[offset + i]
         if e then
             row.entry = e
-            row.label:SetText(e.current and ("Level %d  now"):format(e.level) or ("Level %d"):format(e.level))
+            row.label:SetText(("Level %d"):format(e.level))
             row.time:SetText(duration(e.played))
-            local r, g, b = Theme:Accent()
-            if e.current then
-                row.label:SetTextColor(r, g, b)
-                row.fill:SetColorTexture(r, g, b, 0.5)
-            else
-                row.label:SetTextColor(Theme:Color("textDim"))
-                row.fill:SetColorTexture(r, g, b, 1)
-            end
-            row.fill:SetWidth(math.max(0.01, barW * (e.played or 0) / longest))
-            row.fill:SetShown((e.played or 0) > 0)
             row:Show()
         else
             row.entry = nil
@@ -107,10 +99,9 @@ function LevelsUI.Refresh()
         end
     end
     frame.empty:SetShown(#list == 0)
-    frame.footer:SetText(known > 0 and ("%d levels logged, %s played"):format(known, duration(total))
-        or "Level times are logged from now on.")
-    local listH = math.max(shown, 1) * ROW_H
-    frame:SetHeight(TITLE_H + 6 + listH + 30)
+    local listH = (#list == 0 and 1 or shown) * ROW_H
+    frame:SetHeight(TITLE_H + 6 + listH + 8)
+    updateClose()
 end
 
 -- Open state and position are remembered (SessionTrackerDB.levelsWindow). Like the
@@ -130,14 +121,19 @@ local function build()
     frame:SetWidth(WIDTH)
     frame.bg = W.Fill(frame, "window", 0.96)
     frame.bg:SetAllPoints()
-    W.Border(frame, "line")
+    W.Panel(frame, frame.bg, W.Border(frame, "line"))
 
     local title = CreateFrame("Frame", nil, frame)
     title:SetPoint("TOPLEFT")
     title:SetPoint("TOPRIGHT")
     title:SetHeight(TITLE_H)
-    W.Line(title, "bottom", "line")
+    local sep = W.Line(title, "bottom", "line")
+    sep:ClearAllPoints()
+    sep:SetPoint("BOTTOMLEFT", 1, 0)
+    sep:SetPoint("BOTTOMRIGHT", -1, 0)
     title:EnableMouse(true)
+    title:SetScript("OnEnter", updateClose)
+    title:SetScript("OnLeave", updateClose)
     title:RegisterForDrag("LeftButton")
     title:SetScript("OnDragStart", function()
         if not ST.db.window.locked then frame:StartMoving() end
@@ -148,33 +144,35 @@ local function build()
         frame:ClearAllPoints()
         frame:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", db().left, db().top)
     end)
-    local name = W.Text(title, 1, "text")
+    local name = W.Text(title, 2, "text")
     name:SetPoint("LEFT", PAD, 0)
     name:SetText("Level times")
     local close = W.CloseButton(title, function() LevelsUI.SetShown(false) end)
     close:SetSize(20, 20)
-    close:SetPoint("RIGHT", -5, 0)
+    close:SetPoint("RIGHT", -8, 0)
+    close:HookScript("OnLeave", updateClose)
+    frame.close = close
 
     frame.rows = {}
     for i = 1, MAX_ROWS do
         local row = createRow(frame)
-        row:SetPoint("TOPLEFT", 0, -(TITLE_H + 6 + (i - 1) * ROW_H))
-        row:SetPoint("TOPRIGHT", 0, -(TITLE_H + 6 + (i - 1) * ROW_H))
+        row:SetPoint("TOPLEFT", 4, -(TITLE_H + 6 + (i - 1) * ROW_H))
+        row:SetPoint("TOPRIGHT", -4, -(TITLE_H + 6 + (i - 1) * ROW_H))
         frame.rows[i] = row
     end
     frame.empty = W.Text(frame, -1, "textFaint")
-    frame.empty:SetPoint("TOPLEFT", PAD, -(TITLE_H + 10))
-    frame.empty:SetText("Nothing yet: your next level will show here.")
-    frame.footer = W.Text(frame, -2, "textFaint")
-    frame.footer:SetPoint("BOTTOMLEFT", PAD, 10)
+    frame.empty:SetPoint("TOPLEFT", PAD, -(TITLE_H + 11))
+    frame.empty:SetText("Your next level will show here.")
 
     frame:EnableMouseWheel(true)
     frame:SetScript("OnMouseWheel", function(_, delta)
         offset = offset - delta * 3
         LevelsUI.Refresh()
     end)
+    frame:SetScript("OnEnter", updateClose)
+    frame:SetScript("OnLeave", updateClose)
     frame:SetScript("OnShow", function()
-        offset = math.max(0, #Levels.List() - MAX_ROWS) -- newest levels in view
+        offset = 0 -- newest levels in view
         LevelsUI.Refresh()
         if C_Timer and C_Timer.NewTicker then
             ticker = C_Timer.NewTicker(1, function() ST:Call("levels tick", LevelsUI.Refresh) end)

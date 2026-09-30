@@ -1,7 +1,10 @@
 ## Interface: 16001
-## Title: SessionTracker
-## Notes: Gold, XP and time for your current play session, and how long each level took
+## Title: Session Tracker
+## Notes: Gold, XP and time for your current play session, and how long each level took. Part of Allemano Addons.
 ## Version: 0.4.0
+## Author: Allemano
+## Category: Miscellaneous
+## X-Curse-Project-ID: 1719167
 ## SavedVariables: SessionTrackerDB
 ## OptionalDeps: Hush
 ## IconTexture: Interface\AddOns\SessionTracker\Media\wow\icon

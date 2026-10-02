@@ -1,44 +1,64 @@
-# Session Tracker
+# Allemano Ledger
 
-**How did your play session go?** Session Tracker is a small, always-on window for **WoW Forever** that shows what the current session has brought you: time played, gold earned or spent, XP, and how long until the next level. It also keeps a record of how long each of your levels took.
+**Where did your gold come from, and where did it go?** Allemano Ledger keeps the books for **WoW Forever**: gold by source, XP, kills, reputation and loot, for the session you are playing, for today and for all time. It is the new name and the next big version of Session Tracker.
 
-> **Alpha.** Session Tracker is new. It is a small HUD-style window; nothing is sent to anyone.
+> **Beta.** Ledger is new and still growing. Everything is saved on your own computer; nothing is sent to anyone.
 
 ## What it does
 
-### Your session at a glance
-A compact window with:
-- **Session time**
-- **Gold +/-** for the session (what you earned or spent) and **gold per hour**
-- **XP gained** (counted across level-ups) and **XP per hour**
-- **Time to the next level** at your current pace
-- A slim **level progress bar**
+### Now: this session
+Open it with `/ledger`.
+- **Earned, spent, net and gold per hour** (with XP per hour) for the session.
+- **Income by source:** loot coins, vendor sales, quest rewards, auction house, mail and trades.
+- **Expenses:** repairs, vendor purchases, training, flights and mail.
+- A **graph of your net gold** over the session, the **vendor value of the loot** you picked up, and the total with it.
+- **Pause** the session (the clock and the tallies stop), tag it (**Farming, Dungeon, Raid, Leveling, Questing, Professions, PvP** or automatic) and **End session** to save it.
 
-*Example:* You farm for an hour. The window shows +12g, 12g per hour, some thousands of XP, and that the next level is 22 minutes away, so you know whether one more run is worth it.
+*Example:* You farm for an hour. Ledger shows that vendor sales brought most of it, what the repair bill was, and that your net gold per hour is lower than you thought.
+
+### History
+- **Gold earned per day** for 14 days, 30 days or all time, split by source.
+- A table of your finished **sessions and instance runs**: date, character, activity, zone, time, net gold and gold per hour.
+- When you **leave a dungeon, raid or battleground** a small **run summary** pops up: what the run made, repairs, gold per hour and the value of the loot you did not sell. Save it to the history or discard it.
+
+### Lifetime
+Total earned, total spent and net gain across all your characters since you installed the addon, **gold held over time** and **where it all came from**.
+
+### Progress
+**XP gained** (and how much came from quests), **XP per hour**, kills, deaths, your **level progress** with the time on this level, time to the next level and rested XP, and **reputation gained** per faction. Switch between this **session, today, 7 days and all time**.
+
+### Loot
+**Items looted by quality** (poor to legendary), the vendor value of your loot, loot coins, and a list of your latest **rare and better drops** (hover one for its tooltip). Same period switch as Progress.
 
 ### Level times
-Press the **Levels** button next to the title (or type `/session levels`) to see **how long every level took**, newest first, in the game's /played time. Hover a level for the real time, the date and the zone where you dinged. The level you are in is exact from your very first login with the addon.
+Press the **Levels** button on the small window (or type `/ledger levels`) to see how long every level took, in the game's /played time.
 
-### Sessions that fit how you play
-- A **/reload keeps the session going**.
-- By default a **new session starts at every login**. Or choose "only when I press Reset": then one session can run over several logins and counts only the time you were logged in.
-- Right-click the title for **Reset**, **Settings**, **Lock** and **Hide**.
+### The small session window
+`/session` (or `/sesh`) still shows or hides the small always-on window with time, gold, gold per hour, XP and a level bar. It has a **Details** button that opens the Ledger window.
 
-### Stays out of the way
-Drag it anywhere, lock it in place, hide it in combat, and choose which rows to show. It does not close when you press ESC, like a HUD should, and it remembers whether it was shown or hidden.
+## Gold between your own characters
+Gold you mail or trade to **a character the addon has seen** is counted as a transfer, not as income or expense. Log in once on each character so the addon knows them.
 
-## Settings
-`/session settings` or right-click the title: font, text size, accent color (Session amber, follow Hush, your class color or a custom one), background, window scale, which rows to show, the level bar on or off, hide in combat, lock position, and the new-session mode.
+## Coming
+An **Alts** tab with every character side by side, and a **gold goal** ("how long until I can afford the mount?"). Both are marked "Soon" in the window.
 
 ## Good to know
-- Standalone. No other addon is needed; if Hush is installed, the window can follow its accent color.
-- The "Total time played" chat line is hidden only for Session Tracker's own /played requests, never for yours.
-- WoW Forever hides Lua errors, so Session Tracker records them: `/session errors` lists the most recent ones.
+- **Standalone.** No other addon is needed. If Hush is installed, Ledger can follow its accent color.
+- **Where the gold came from is worked out from what you were doing** (a vendor open, the mail box, a trade, a quest turn-in, a loot window). Anything that fits none of them is shown as "Other".
+- **Kills are counted from the XP message**, so only kills that give XP count: not grey mobs and not at max level.
+- Your **Session Tracker data moves over by itself** the first time you log in. The old file is left untouched as a backup.
+- WoW Forever hides Lua errors, so Ledger records them: `/ledger errors` lists the most recent ones.
+
+## Settings
+`/ledger settings`: font, text size, accent color (Ledger amber, follow Hush, your class color or a custom one), background, window scale, which rows the small window shows, the level bar, hide in combat, lock position, and whether a new session starts at every login or only when you press Reset.
 
 ## Commands
-`/session` (or `/sesh`) shows or hides the window · `/session reset` starts a new session · `/session levels` level times · `/session settings` · `/session errors`
+`/ledger` opens the Ledger window · `/ledger hud` or `/session` shows/hides the small window · `/ledger history` · `/ledger lifetime` · `/ledger levels` · `/ledger reset` starts a new session · `/ledger settings` · `/ledger errors`
 
 ## Installing manually (WoW Forever)
-Session Tracker is made for WoW Forever (interface 16001). If the CurseForge app does not install it into the right folder, download the file from the **Files** tab and unzip it so that the folder is `World of Warcraft\_classic_beta_\Interface\AddOns\SessionTracker`, then restart the game.
+Ledger is made for WoW Forever (interface 16001). If the CurseForge app does not install it into the right folder, download the file from the **Files** tab and unzip it so that the folder is `World of Warcraft\_classic_beta_\Interface\AddOns\AllemanoLedger` (the folder must be called AllemanoLedger), then restart the game. If you still have the old `SessionTracker` folder, delete it so the two do not clash.
+
+## How it is made
+Allemano Addons are designed, tested and decided by a person who plays the game, and written with the help of Claude (an AI assistant). It is tested in the game by the author and a few guildmates, so some things only show up once more people use it. Found a bug or have an idea? Tell us.
 
 Part of **Allemano Addons**. Source code and issues: https://github.com/Allemano-Addons/SessionTracker

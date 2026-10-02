@@ -60,7 +60,7 @@ abs = math.abs
 strlower, strupper, tinsert, tremove, sort, floor, ceil, min, max, format = string.lower, string.upper, table.insert, table.remove, table.sort, math.floor, math.ceil, math.min, math.max, string.format
 wipe = function(t) for k in pairs(t) do t[k] = nil end return t end
 date = os.date
-local now = 1000000
+local now = 1790000000
 time = function() return now end
 CopyTable = function(t) local c = {} for k, v in pairs(t) do c[k] = type(v) == "table" and CopyTable(v) or v end return c end
 local errors = {}
@@ -87,16 +87,46 @@ UnitXP = function() return P.xp end
 UnitXPMax = function() return P.xpMax end
 GetMoney = function() return P.money end
 GetMaxPlayerLevel = function() return P.maxLevel end
-GetRealZoneText = function() return "The Barrens" end
+GetRealZoneText = function() return P.zone or "The Barrens" end
+-- Ledger: world state the addon looks at.
+local W_ = { instance = false, itype = "none", repairAll = 0, sendMoney = 0, inbox = {}, invoice = {} }
+IsInInstance = function() return W_.instance, W_.itype end
+CanMerchantRepair = function() return W_.repairAll > 0 end
+GetRepairAllCost = function() return W_.repairAll end
+GetSendMailMoney = function() return W_.sendMoney end
+GetInboxHeaderInfo = function(i) local m = W_.inbox[i]; return nil, nil, m and m.sender, nil, m and m.money end
+GetInboxInvoiceInfo = function(i) return W_.invoice[i] end
+GetRewardMoney = function() return 0 end
+local lootSlots = {}
+GetNumLootItems = function() return #lootSlots end
+LootSlotHasItem = function(i) return lootSlots[i] ~= nil end
+GetLootSlotLink = function(i) return lootSlots[i] and lootSlots[i].link end
+GetLootSlotInfo = function(i) return nil, nil, lootSlots[i] and lootSlots[i].qty, lootSlots[i] and lootSlots[i].rarity end
+GetItemInfo = function(link)
+    local quality = link == "[Epic Sword]" and 4 or 1
+    local price = link == "[Linen Cloth]" and 13 or (link == "[Epic Sword]" and 500 or 0)
+    return nil, nil, quality, nil, nil, nil, nil, nil, nil, nil, price
+end
+COMBATLOG_XPGAIN_FIRSTPERSON = "%s dies, you gain %d experience."
+FACTION_STANDING_INCREASED = "Reputation with %s increased by %d."
+FACTION_STANDING_DECREASED = "Reputation with %s decreased by %d."
+TakeInboxMoney = function() end
+AutoLootMailItem = function() end
+RepairAllItems = function() end
+SendMail = function() end
+hooksecurefunc = function(name, fn)
+    local orig = _G[name]
+    _G[name] = function(...) local a = orig(...); fn(...); return a end
+end
 -- /played: requests are counted; the chat frames print through ChatFrame_DisplayTimePlayed.
 local playedRequests, chatPrints = 0, 0
 RequestTimePlayed = function() playedRequests = playedRequests + 1 end
 ChatFrame_DisplayTimePlayed = function() chatPrints = chatPrints + 1 end
 
 local ST = {}
-for line in io.lines("SessionTracker.toc") do
+for line in io.lines("AllemanoLedger.toc") do
     line = line:gsub("\r", "")
-    if line ~= "" and not line:match("^#") then assert(loadfile((line:gsub("\\", "/"))))("SessionTracker", ST) end
+    if line ~= "" and not line:match("^#") then assert(loadfile((line:gsub("\\", "/"))))("AllemanoLedger", ST) end
 end
 
 local function fire(event, ...)
@@ -109,13 +139,13 @@ local function step(name, fn)
 end
 local function cur() return ST.db.chars["Player-1-A"].current end
 local function history() return ST.db.chars["Player-1-A"].history end
-local function rowText(i) return _G.SessionTrackerFrame.rows[i].value._text end
+local function rowText(i) return _G.AllemanoLedgerFrame.rows[i].value._text end
 
 step("login starts a session and shows the window", function()
-    fire("ADDON_LOADED", "SessionTracker")
+    fire("ADDON_LOADED", "AllemanoLedger")
     fire("PLAYER_ENTERING_WORLD", true, false)
     assert(cur() and cur().startMoney == 1000, "no session")
-    assert(_G.SessionTrackerFrame._shown, "window not shown")
+    assert(_G.AllemanoLedgerFrame._shown, "window not shown")
 end)
 step("money and XP", function()
     now = now + 1800
@@ -151,7 +181,7 @@ step("reload keeps the session", function()
     local start = cur().start
     fire("PLAYER_LOGOUT")
     now = now + 5
-    fire("ADDON_LOADED", "SessionTracker")
+    fire("ADDON_LOADED", "AllemanoLedger")
     fire("PLAYER_ENTERING_WORLD", false, true)
     assert(cur().start == start and cur().xpGained == 950, "session lost on reload")
 end)
@@ -187,22 +217,22 @@ step("max level", function()
     ST.Window.Refresh()
     assert(ST.Session.Stats().maxLevel, "not max level")
     assert(rowText(6) == "max level", "next level row: " .. tostring(rowText(6)))
-    assert(not _G.SessionTrackerFrame.track:IsShown(), "level bar still shown")
+    assert(not _G.AllemanoLedgerFrame.track:IsShown(), "level bar still shown")
 end)
 step("hide and show", function()
     SlashCmdList.SESSIONTRACKER("")
-    assert(not _G.SessionTrackerFrame._shown and ST.db.window.shown == false, "not hidden")
+    assert(not _G.AllemanoLedgerFrame._shown and ST.db.window.shown == false, "not hidden")
     fire("PLAYER_ENTERING_WORLD", false, true)
-    assert(not _G.SessionTrackerFrame._shown, "came back after reload although hidden")
+    assert(not _G.AllemanoLedgerFrame._shown, "came back after reload although hidden")
     SlashCmdList.SESSIONTRACKER("")
-    assert(_G.SessionTrackerFrame._shown, "not shown again")
+    assert(_G.AllemanoLedgerFrame._shown, "not shown again")
 end)
 step("title menu", function()
     local realOpen, items = ST.Widgets.OpenMenu, nil
     ST.Widgets.OpenMenu = function(list) items = list end
     for f, s in pairs(scripts) do if s.OnMouseUp and s.OnDragStart then s.OnMouseUp(f, "RightButton") end end
     ST.Widgets.OpenMenu = realOpen
-    assert(items and #items == 5, "menu not opened")
+    assert(items and #items == 6, "menu not opened: " .. tostring(ST.errors[#ST.errors] and ST.errors[#ST.errors].msg))
     for _, it in ipairs(items) do assert(it.text ~= "Level times", "Level times still in the menu") end
 end)
 step("slash errors", function() SlashCmdList.SESSIONTRACKER("errors") end)
@@ -259,10 +289,10 @@ end)
 step("level times window and the This level row", function()
     ST.Window.Refresh()
     assert(rowText(7) and rowText(7) ~= "...", "This level row: " .. tostring(rowText(7)))
-    local hit = _G.SessionTrackerFrame.levelTimesButton
+    local hit = _G.AllemanoLedgerFrame.levelTimesButton
     scripts[hit].OnEnter(hit)
     scripts[hit].OnClick(hit)
-    local f = _G.SessionTrackerLevelsFrame
+    local f = _G.AllemanoLedgerLevelsFrame
     assert(f and f._shown, "level times window not shown")
     local rows = 0
     for _, row in ipairs(f.rows) do if row._shown and row.entry then rows = rows + 1 end end
@@ -274,10 +304,10 @@ step("level times window and the This level row", function()
 end)
 
 -- Settings.
-local main = function() return _G.SessionTrackerFrame end
+local main = function() return _G.AllemanoLedgerFrame end
 step("settings window opens and every control works", function()
     SlashCmdList.SESSIONTRACKER("settings")
-    local f = _G.SessionTrackerSettingsFrame
+    local f = _G.AllemanoLedgerSettingsFrame
     assert(f and f._shown, "settings not shown")
     -- Click every toggle twice (off and back on).
     local toggles = 0
@@ -349,17 +379,17 @@ step("Levels button toggles level times", function()
     local b = main().levelsButton
     assert(b, "no Levels button")
     scripts[b].OnClick(b)
-    local f = _G.SessionTrackerLevelsFrame
+    local f = _G.AllemanoLedgerLevelsFrame
     assert(f._shown and ST.LevelsUI.IsOpen(), "not opened by the button: " .. tostring(ST.errors[#ST.errors] and ST.errors[#ST.errors].msg))
     for _, name in ipairs(UISpecialFrames) do
-        assert(name ~= "SessionTrackerLevelsFrame", "ESC would close level times")
+        assert(name ~= "AllemanoLedgerLevelsFrame", "ESC would close level times")
     end
     scripts[b].OnClick(b)
     assert(not f._shown and not ST.LevelsUI.IsOpen(), "not closed by the button")
 end)
 step("level times stays open over a reload, X closes it", function()
     ST.LevelsUI.SetShown(true)
-    local f = _G.SessionTrackerLevelsFrame
+    local f = _G.AllemanoLedgerLevelsFrame
     f:Hide() -- the UI going away on /reload
     fire("PLAYER_ENTERING_WORLD", false, true)
     assert(f._shown, "not reopened after reload")
@@ -376,6 +406,236 @@ step("level times stays open over a reload, X closes it", function()
     assert(closed and not ST.LevelsUI.IsOpen(), "X did not close it (x buttons: " .. xs .. ", shown " .. tostring(f._shown) .. ")")
     fire("PLAYER_ENTERING_WORLD", false, true)
     assert(not f._shown, "came back although closed")
+end)
+
+-- ===========================================================================
+-- Allemano Ledger: where the gold came from
+-- ===========================================================================
+local function today_() return c().days[ST.Ledger.DayKey()] end
+-- Click every button that matches (a snapshot first: clicking builds frames, and adding keys to
+-- `scripts` while walking it would make the walk undefined).
+local function clickAll(match)
+    local found = {}
+    for btn, s in pairs(scripts) do
+        if s.OnClick and match(btn) then found[#found + 1] = btn end
+    end
+    for _, btn in ipairs(found) do scripts[btn].OnClick(btn) end
+    return #found
+end
+step("Ledger: resync after the earlier tests", function()
+    P.zone = nil
+    P.money = 100000
+    fire("PLAYER_ENTERING_WORLD", false, true)
+    ST.db.chars["Player-2-B"] = { name = "Mirelle", class = "MAGE", history = {}, days = {} } -- another own character
+    assert(cur().inc and cur().exp, "no tallies")
+end)
+step("Ledger: vendor sale, repair and purchase", function()
+    local inc0 = (cur().inc.vendor or 0)
+    fire("MERCHANT_SHOW")
+    P.money = P.money + 500; fire("PLAYER_MONEY")
+    assert(cur().inc.vendor == inc0 + 500, "vendor income " .. tostring(cur().inc.vendor))
+    W_.repairAll = 300
+    fire("MERCHANT_UPDATE")
+    P.money = P.money - 300; fire("PLAYER_MONEY")
+    assert(cur().exp.repair == 300, "repair " .. tostring(cur().exp.repair))
+    P.money = P.money - 50; fire("PLAYER_MONEY")
+    assert(cur().exp.vendor == 50, "purchase " .. tostring(cur().exp.vendor))
+    -- Repair All pressed: even a different amount (a discount) is a repair.
+    RepairAllItems()
+    P.money = P.money - 120; fire("PLAYER_MONEY")
+    assert(cur().exp.repair == 420, "repair via hook " .. tostring(cur().exp.repair))
+    fire("MERCHANT_CLOSED")
+    W_.repairAll = 0
+end)
+step("Ledger: quest reward and loot coins", function()
+    fire("QUEST_TURNED_IN", 1, 100, 700)
+    P.money = P.money + 700; fire("PLAYER_MONEY")
+    assert(cur().inc.quest == 700, "quest " .. tostring(cur().inc.quest))
+    lootSlots = { { link = "[Linen Cloth]", qty = 4 } }
+    fire("LOOT_OPENED")
+    P.money = P.money + 40; fire("PLAYER_MONEY")
+    assert(cur().inc.loot == 40, "loot " .. tostring(cur().inc.loot))
+    fire("LOOT_SLOT_CLEARED", 1)
+    assert(cur().lootValue == 52 and cur().items == 4, "loot value " .. tostring(cur().lootValue))
+    fire("LOOT_CLOSED")
+    lootSlots = {}
+end)
+step("Ledger: mail from your own character is a transfer, AH proceeds are income", function()
+    fire("MAIL_SHOW")
+    W_.inbox[1] = { sender = "Mirelle", money = 1000 }
+    TakeInboxMoney(1)
+    P.money = P.money + 1000; fire("PLAYER_MONEY")
+    assert(cur().xfer == 1000 and not cur().inc.mail, "transfer in: " .. tostring(cur().xfer))
+    assert(today_().xferIn == 1000, "day transfer")
+    W_.inbox[2] = { sender = "Auction House", money = 2000 }
+    W_.invoice[2] = "seller"
+    TakeInboxMoney(2)
+    P.money = P.money + 2000; fire("PLAYER_MONEY")
+    assert(cur().inc.ah == 2000, "ah " .. tostring(cur().inc.ah))
+    -- Sending 500 to the alt costs 30 postage on top.
+    W_.sendMoney = 500
+    fire("MAIL_SEND_INFO_UPDATE")
+    SendMail("Mirelle")
+    P.money = P.money - 530; fire("PLAYER_MONEY")
+    assert(cur().xfer == 1500 and cur().exp.mail == 30, "send: " .. tostring(cur().xfer) .. " / " .. tostring(cur().exp.mail))
+    fire("MAIL_CLOSED")
+end)
+step("Ledger: unexplained money is other, numbers add up", function()
+    now = now + 10 -- out of the grace windows
+    P.money = P.money + 99; fire("PLAYER_MONEY")
+    assert(cur().inc.other and cur().inc.other >= 99, "other")
+    local s = ST.Session.Stats()
+    local earned = 0
+    for _, v in pairs(cur().inc) do earned = earned + v end
+    assert(s.earned == earned and s.gold == s.earned - s.spent, "net")
+    assert(s.xfer == 1500, "xfer in stats")
+    assert(#cur().series > 3, "graph points " .. #cur().series)
+end)
+step("Ledger: pause freezes the clock and the tallies", function()
+    local before = ST.Session.Stats()
+    ST.Session.Pause()
+    now = now + 600
+    P.money = P.money + 1000; fire("PLAYER_MONEY")
+    local during = ST.Session.Stats()
+    assert(during.paused and during.elapsed == before.elapsed, "clock ran while paused")
+    assert(during.earned == before.earned, "session counted gold while paused")
+    assert(today_().inc.other >= 1000 + 99, "the day still counts it")
+    ST.Session.Resume()
+    now = now + 30
+    assert(ST.Session.Stats().elapsed == before.elapsed + 30, "resume")
+end)
+step("Ledger: day and lifetime totals, heartbeat", function()
+    ST.Ledger.Heartbeat()
+    now = now + 15
+    ST.Ledger.Heartbeat()
+    assert(today_().time >= 15, "time online")
+    local d = ST.Ledger.Day(ST.Ledger.DayKey())
+    assert(d.inc.vendor >= 500 and d.exp.repair == 420, "day totals")
+    local life = ST.Ledger.Lifetime()
+    assert(life.firstDay and life.xferIn >= 1000, "lifetime")
+    assert(#ST.Ledger.RecentDays(14) == 14 and ST.Ledger.RecentDays(1)[1] == ST.Ledger.DayKey(), "recent days")
+    local gold = ST.Ledger.GoldOverTime(30)
+    assert(#gold >= 1 and gold[#gold][2] > 0, "gold over time")
+end)
+step("Ledger: tags", function()
+    assert(ST.Session.Tag(cur()) ~= nil, "no tag")
+    ST.Session.SetTag("Dungeon")
+    assert(ST.Session.Stats().tag == "Dungeon", "manual tag")
+    ST.Session.SetTag(nil)
+    assert(ST.Session.Stats().tag == "Leveling" or ST.Session.Stats().tag == "Farming", "auto tag")
+end)
+step("Ledger: window opens, every tab and range builds", function()
+    local before = #ST.errors
+    SlashCmdList.ALLEMANOLEDGER("")
+    local f = _G.AllemanoLedgerWindow
+    assert(f and f._shown, "Ledger window not shown")
+    local tabs = clickAll(function(btn) return rawget(btn, "underline") end)
+    assert(tabs == 7, "tabs " .. tabs)
+    -- History: every range button.
+    clickAll(function(btn) return rawget(btn, "text") and btn.text._text and (btn.text._text:find("days") or btn.text._text == "All") end)
+    SlashCmdList.ALLEMANOLEDGER("history")
+    SlashCmdList.ALLEMANOLEDGER("lifetime")
+    assert(#ST.errors == before, "errors while drawing: " .. tostring(ST.errors[#ST.errors] and ST.errors[#ST.errors].msg))
+    SlashCmdList.ALLEMANOLEDGER("")
+    assert(not f._shown, "toggle did not close")
+end)
+step("Ledger: the HUD shows Paused", function()
+    ST.Session.Pause()
+    ST.Window.Refresh()
+    assert(rowText(1) == "Paused", "HUD time row: " .. tostring(rowText(1)))
+    ST.Session.Resume()
+end)
+step("Ledger: an instance run ends with a summary that can be saved", function()
+    ST.Ledger.Heartbeat()
+    P.zone = "Deadmines"
+    W_.instance, W_.itype = true, "party"
+    fire("ZONE_CHANGED_NEW_AREA")
+    assert(c().run and c().run.tag == "Dungeon", "run not started")
+    fire("MERCHANT_SHOW")
+    P.money = P.money + 4000; fire("PLAYER_MONEY")
+    fire("MERCHANT_CLOSED")
+    now = now + 4000
+    ST.Ledger.Heartbeat()
+    W_.instance, W_.itype = false, "none"
+    P.zone = "Stormwind"
+    fire("ZONE_CHANGED_NEW_AREA")
+    assert(not c().run and c().pendingRun and c().pendingRun.inc.vendor == 4000, "run not finished")
+    local pop = _G.AllemanoLedgerRunSummary
+    assert(pop and pop._shown, "summary not shown")
+    local saved = clickAll(function(btn) return rawget(btn, "primary") and btn.text._text == "Save to history" end) == 1
+    assert(saved and not pop._shown and not c().pendingRun, "not saved")
+    assert(c().history[1].kind == "run" and c().history[1].zone == "Deadmines" and c().history[1].net == 4000, "run in history")
+end)
+step("Ledger: a short visit leaves no summary", function()
+    W_.instance, W_.itype = true, "party"
+    P.zone = "Wailing Caverns"
+    fire("ZONE_CHANGED_NEW_AREA")
+    now = now + 30
+    W_.instance, W_.itype = false, "none"
+    fire("ZONE_CHANGED_NEW_AREA")
+    assert(not c().pendingRun, "summary for a 30 s visit")
+end)
+step("Ledger: kills, deaths, items by quality, rare drops", function()
+    local k0 = cur().kills
+    fire("CHAT_MSG_COMBAT_XP_GAIN", "Defias Thug dies, you gain 55 experience.")
+    fire("CHAT_MSG_COMBAT_XP_GAIN", "Wolf dies, you gain 60 experience. (+12 exp Rested bonus)")
+    fire("CHAT_MSG_COMBAT_XP_GAIN", "You gain 300 experience.") -- a quest, not a kill
+    assert(cur().kills == k0 + 2, "kills " .. tostring(cur().kills))
+    fire("PLAYER_DEAD")
+    assert(cur().deaths == 1 and today_().deaths == 1, "deaths")
+    lootSlots = { { link = "[Epic Sword]", qty = 1, rarity = 4 }, { link = "[Linen Cloth]", qty = 2, rarity = 1 } }
+    fire("LOOT_OPENED")
+    fire("LOOT_SLOT_CLEARED", 1)
+    fire("LOOT_SLOT_CLEARED", 2)
+    fire("LOOT_CLOSED")
+    lootSlots = {}
+    assert(cur().qItems[4] == 1 and cur().qItems[1] >= 6, "items by quality")
+    assert(today_().items[4] == 1, "day items")
+    assert(#ST.Ledger.Notable() == 1 and ST.Ledger.Notable()[1].link == "[Epic Sword]", "rare drop list")
+end)
+step("Ledger: reputation from the chat line", function()
+    fire("CHAT_MSG_COMBAT_FACTION_CHANGE", "Reputation with Stormwind increased by 75.")
+    fire("CHAT_MSG_COMBAT_FACTION_CHANGE", "Reputation with Stormwind increased by 25.")
+    fire("CHAT_MSG_COMBAT_FACTION_CHANGE", "Reputation with Darnassus decreased by 10.")
+    fire("CHAT_MSG_COMBAT_FACTION_CHANGE", "something unrelated")
+    assert(cur().rep.Stormwind == 100 and cur().rep.Darnassus == -10, "rep " .. tostring(cur().rep.Stormwind))
+    assert(today_().rep.Stormwind == 100, "day rep")
+end)
+step("Ledger: quest XP, whichever comes first", function()
+    local q0 = cur().xpQuest
+    P.xp = P.xp + 300
+    fire("PLAYER_XP_UPDATE", "player")
+    fire("QUEST_TURNED_IN", 7, 300, 0) -- the XP bar moved first
+    assert(cur().xpQuest == q0 + 300, "quest xp after " .. tostring(cur().xpQuest))
+    fire("QUEST_TURNED_IN", 8, 200, 0) -- the quest event first
+    P.xp = P.xp + 250
+    fire("PLAYER_XP_UPDATE", "player")
+    assert(cur().xpQuest == q0 + 500, "quest xp before " .. tostring(cur().xpQuest))
+    assert(today_().xpQuest == cur().xpQuest and today_().xp >= 550, "day xp")
+end)
+step("Ledger: periods", function()
+    local s, d, w, a = ST.Ledger.Period("session"), ST.Ledger.Period("today"), ST.Ledger.Period("week"), ST.Ledger.Period("all")
+    assert(s.kills == 2 and s.itemCount >= 7 and s.xpQuest == cur().xpQuest, "session period")
+    assert(d.kills == 2 and d.items[4] == 1 and d.rep.Stormwind == 100 and d.inc.vendor >= 500, "today period")
+    assert(w.kills == 2 and a.kills == 2 and a.xp >= d.xp, "week / all")
+end)
+step("Ledger: Progress and Loot tabs draw", function()
+    local before = #ST.errors
+    SlashCmdList.ALLEMANOLEDGER("")
+    clickAll(function(btn) return rawget(btn, "underline") and (btn.text._text == "Progress" or btn.text._text == "Loot") end)
+    for _, period in ipairs({ "Session", "Today", "7 days", "All time" }) do
+        assert(clickAll(function(btn) return rawget(btn, "text") and btn.text._text == period and not rawget(btn, "underline") end) >= 2, "period " .. period)
+    end
+    assert(#ST.errors == before, "errors: " .. tostring(ST.errors[#ST.errors] and ST.errors[#ST.errors].msg))
+    SlashCmdList.ALLEMANOLEDGER("")
+end)
+step("Ledger: first start after the rename takes over the old data", function()
+    AllemanoLedgerDB = nil
+    SessionTrackerDB = { chars = { ["Player-9-Z"] = { name = "Old", history = {} } }, settings = {} }
+    fire("ADDON_LOADED", "AllemanoLedger")
+    assert(AllemanoLedgerDB.chars["Player-9-Z"] and AllemanoLedgerDB.migratedFrom == "SessionTrackerDB", "not migrated")
+    assert(SessionTrackerDB.chars["Player-9-Z"], "old data must stay")
+    assert(AllemanoLedgerDB.chars ~= SessionTrackerDB.chars, "must be a copy")
 end)
 
 print(#errors == 0 and "ALL OK" or (#errors .. " error(s)"))

@@ -1,20 +1,20 @@
--- SessionTracker: core namespace, event dispatcher, errors, SavedVariables and slash command.
+-- Allemano Ledger: core namespace, event dispatcher, errors, SavedVariables and slash command.
 -- Standalone: never requires Hush or AltBoard.
 local addonName, ST = ...
 
 ST.name = addonName
--- The SessionTracker mark (Media/wow/mark.tga, 64x64, own colors); Media/wow/icon.tga is the
+-- The Allemano Ledger mark (Media/wow/mark.tga, 64x64, own colors); Media/wow/icon.tga is the
 -- addon list icon (TOC). Media/png and Media/svg hold the source pictures.
 ST.LOGO = "Interface\\AddOns\\" .. addonName .. "\\Media\\wow\\mark"
 
 function ST:Print(...)
     local msg = strjoin(" ", tostringall(...))
-    DEFAULT_CHAT_FRAME:AddMessage("|cffe8a93bSession|r " .. msg)
+    DEFAULT_CHAT_FRAME:AddMessage("|cffe8a93bLedger|r " .. msg)
 end
 
 -- ---------------------------------------------------------------------------
 -- Errors: WoW Forever does not show Lua errors, so they are kept (last 10, also in
--- SessionTrackerDB.errors), announced once per session and listed by /session errors.
+-- AllemanoLedgerDB.errors), announced once per session and listed by /ledger errors.
 -- ---------------------------------------------------------------------------
 
 ST.errors = {}
@@ -26,7 +26,7 @@ function ST:RecordError(where, err)
     while #list > 10 do tremove(list, 1) end
     if not announced then
         announced = true
-        self:Print("|cffe8a33dhit an error|r (" .. tostring(where) .. "). /session errors shows it.")
+        self:Print("|cffe8a33dhit an error|r (" .. tostring(where) .. "). /ledger errors shows it.")
     end
     geterrorhandler()(err)
 end
@@ -71,7 +71,7 @@ end)
 local DEFAULT_SETTINGS = {
     font = "Friz Quadrata",
     textSize = "M",
-    accentMode = "own",   -- own (SessionTracker amber) / hush (follow Hush if installed) / class / custom
+    accentMode = "own",   -- own (Ledger amber) / hush (follow Hush if installed) / class / custom
     accent = "E8A93B",  -- used by "custom"
     bgAlpha = 0.9,
     scale = 1,
@@ -103,12 +103,24 @@ function ST:SetSetting(key, value)
 end
 
 local function initDB()
-    if type(SessionTrackerDB) ~= "table" then SessionTrackerDB = {} end
-    local db = SessionTrackerDB
+    if type(AllemanoLedgerDB) ~= "table" then
+        -- First start after the rename (Session Tracker -> Allemano Ledger): take over the old
+        -- data. The old variable is left alone as a backup.
+        local old = rawget(_G, "SessionTrackerDB")
+        if type(old) == "table" and next(old) then
+            AllemanoLedgerDB = CopyTable(old)
+            AllemanoLedgerDB.migratedFrom = "SessionTrackerDB"
+        else
+            AllemanoLedgerDB = {}
+        end
+    end
+    local db = AllemanoLedgerDB
+    db.firstSeen = db.firstSeen or time()
     db.settings = db.settings or {}
     fillDefaults(db.settings, DEFAULT_SETTINGS)
     db.window = db.window or {}
     db.levelsWindow = db.levelsWindow or {}
+    db.ledgerWindow = db.ledgerWindow or {}
     db.chars = db.chars or {} -- keyed by player GUID
     db.errors = db.errors or {}
     for _, e in ipairs(ST.errors) do tinsert(db.errors, e) end
@@ -135,7 +147,8 @@ function ST:AddSlashCommand(name, fn, help)
     slashCommands[name] = { fn = fn, help = help }
 end
 
-function ST:Toggle() end -- replaced by the window
+function ST:Toggle() end -- replaced by the HUD window
+function ST.ToggleLedger() end -- replaced by the Ledger window
 
 ST:AddSlashCommand("errors", function(arg)
     if strlower(arg or "") == "clear" then
@@ -147,23 +160,30 @@ ST:AddSlashCommand("errors", function(arg)
     for _, e in ipairs(ST.errors) do
         ST:Print(("[%s] %s (v%s): %s"):format(date("%d/%m %H:%M", e.t), e.where, tostring(e.v), e.msg))
     end
-end, "show recent errors (/session errors clear empties the list)")
+end, "show recent errors (/ledger errors clear empties the list)")
 
-SLASH_SESSIONTRACKER1 = "/session"
-SLASH_SESSIONTRACKER2 = "/sesh"
-SlashCmdList.SESSIONTRACKER = function(msg)
+local function runSlash(msg, emptyFn, label)
     msg = strtrim(msg or "")
     local cmd, rest = msg:match("^(%S*)%s*(.-)$")
     cmd = strlower(cmd or "")
     local c = slashCommands[cmd]
     if cmd == "" then
-        ST:Call("toggle", ST.Toggle, ST)
+        ST:Call(label, emptyFn, ST)
     elseif c then
-        ST:Call("/session " .. cmd, c.fn, rest)
+        ST:Call(label .. " " .. cmd, c.fn, rest)
     else
-        ST:Print("/session - show/hide the window")
+        ST:Print("/ledger - show/hide the Ledger window")
         for _, name in ipairs(slashOrder) do
-            ST:Print(("/session %s - %s"):format(name, slashCommands[name].help or ""))
+            ST:Print(("/ledger %s - %s"):format(name, slashCommands[name].help or ""))
         end
     end
 end
+
+-- /ledger opens the big window; /session (and /sesh, the old Session Tracker commands) still
+-- show/hide the small session window. Both take the same subcommands.
+SLASH_ALLEMANOLEDGER1 = "/ledger"
+SlashCmdList.ALLEMANOLEDGER = function(msg) runSlash(msg, function() ST.ToggleLedger() end, "/ledger") end
+
+SLASH_SESSIONTRACKER1 = "/session"
+SLASH_SESSIONTRACKER2 = "/sesh"
+SlashCmdList.SESSIONTRACKER = function(msg) runSlash(msg, function() ST.Toggle() end, "/session") end

@@ -104,7 +104,7 @@ function LevelsUI.Refresh()
     updateClose()
 end
 
--- Open state and position are remembered (SessionTrackerDB.levelsWindow). Like the
+-- Open state and position are remembered (AllemanoLedgerDB.levelsWindow). Like the
 -- session window it stays up: only its X (or the Levels button) closes it, not ESC.
 local function db() return ST.db.levelsWindow end
 
@@ -113,7 +113,7 @@ local function savePosition()
 end
 
 local function build()
-    frame = CreateFrame("Frame", "SessionTrackerLevelsFrame", UIParent)
+    frame = CreateFrame("Frame", "AllemanoLedgerLevelsFrame", UIParent)
     frame:SetFrameStrata("MEDIUM")
     frame:SetClampedToScreen(true)
     frame:SetMovable(true)
@@ -195,7 +195,7 @@ local function place()
         frame:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", db().left, db().top)
         return
     end
-    local main = _G.SessionTrackerFrame
+    local main = _G.AllemanoLedgerFrame
     if main and main:IsShown() and (main:GetLeft() or 0) > WIDTH + 20 then
         frame:SetPoint("TOPRIGHT", main, "TOPLEFT", -8, 0)
     elseif main and main:IsShown() then

@@ -51,7 +51,10 @@ end
 -- ---------------------------------------------------------------------------
 
 local ROWS = {
-    { "Time", function(s) return duration(s.elapsed) end, id = "time" },
+    { "Time", function(s)
+        if s.paused then return "Paused", "warn" end
+        return duration(s.elapsed)
+    end, id = "time" },
     { "Gold", function(s) return signedMoney(s.gold) end, id = "gold" },
     { "Gold / hour", function(s)
         if not s.goldPerHour then return "...", "textFaint" end
@@ -110,7 +113,8 @@ end
 local function openMenu(anchor)
     local db = ST.db.window
     W.OpenMenu({
-        { text = "Session", title = true },
+        { text = "Ledger", title = true },
+        { text = "Open Ledger", onClick = function() ST.LedgerUI.Show() end },
         { text = "Reset session", onClick = function() Session.Reset() end },
         { text = "Settings", onClick = function() ST.Settings.Toggle() end },
         { text = "Lock position", checked = db.locked == true, onClick = function() db.locked = not db.locked or nil end },
@@ -119,7 +123,7 @@ local function openMenu(anchor)
 end
 
 local function build()
-    frame = CreateFrame("Frame", "SessionTrackerFrame", UIParent)
+    frame = CreateFrame("Frame", "AllemanoLedgerFrame", UIParent)
     frame:SetFrameStrata("MEDIUM")
     frame:SetClampedToScreen(true)
     frame:SetMovable(true)
@@ -152,11 +156,11 @@ local function build()
         if button == "RightButton" then ST:Call("menu", openMenu, self) end
     end)
     title:SetScript("OnEnter", function(self)
-        W.ShowTooltip(self, { "Session", colorCode("textFaint") .. "Drag to move. Right-click: reset, settings, lock, hide.|r" })
+        W.ShowTooltip(self, { "Allemano Ledger", colorCode("textFaint") .. "Drag to move. Right-click: reset, settings, lock, hide.|r" })
     end)
     title:SetScript("OnLeave", W.HideTooltip)
 
-    -- The SessionTracker mark (own colors), then the name.
+    -- The AllemanoLedger mark (own colors), then the name.
     local name = W.Text(title, 2, "text")
     local logo = title:CreateTexture(nil, "ARTWORK")
     logo:SetSize(18, 18)
@@ -167,7 +171,7 @@ local function build()
     else
         name:SetPoint("LEFT", logo, "RIGHT", 6, 0)
     end
-    name:SetText("Session")
+    name:SetText("Ledger")
 
     -- "Levels": an outlined button that opens/closes level times (accent while open).
     local levels = CreateFrame("Button", nil, title)
@@ -181,6 +185,28 @@ local function build()
     levels.text:SetText("Levels")
     levels:SetWidth(levels.text:GetStringWidth() + 20)
     levels:SetPoint("RIGHT", -PAD + 2, 0)
+
+    -- "Details": opens the Ledger window (tabs with gold by source, history, lifetime).
+    local details = CreateFrame("Button", nil, title)
+    details:SetHeight(22)
+    details.bg = W.Fill(details, "field", 1)
+    details.bg:SetAllPoints()
+    W.Round(details.bg, Theme.radius.control)
+    details.border = W.RoundBorder(W.Border(details, "line"), Theme.radius.control)
+    details.text = W.Text(details, -1, "textDim")
+    details.text:SetPoint("CENTER", 0, 0)
+    details.text:SetText("Details")
+    details:SetWidth(details.text:GetStringWidth() + 20)
+    details:SetPoint("RIGHT", levels, "LEFT", -6, 0)
+    details:SetScript("OnEnter", function(self)
+        self.text:SetTextColor(Theme:Color("text"))
+        W.ShowTooltip(self, { "Ledger", colorCode("textFaint") .. "Gold by source, history and lifetime totals|r" })
+    end)
+    details:SetScript("OnLeave", function(self)
+        self.text:SetTextColor(Theme:Color("textDim"))
+        W.HideTooltip()
+    end)
+    details:SetScript("OnClick", function() ST:Call("details button", ST.LedgerUI.Toggle) end)
     levels:SetScript("OnEnter", function(self)
         self.hover = true
         Window.UpdateLevelsButton()

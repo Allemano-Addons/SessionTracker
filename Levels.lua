@@ -4,7 +4,7 @@
 -- so the start of the current level is known exactly: total - levelPlayed. On each ding
 -- the level that just ended is logged.
 --
--- SessionTrackerDB.chars[guid]:
+-- AllemanoLedgerDB.chars[guid]:
 --   levelLog   = { [level] = { played, wall, reached, zone } }  -- level -> level+1
 --   levelStart = { level, playedTotal, wallStart }             -- the level in progress
 --   played     = { total, at }                                  -- last known /played

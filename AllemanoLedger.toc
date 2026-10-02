@@ -1,0 +1,22 @@
+## Interface: 16001
+## Title: Allemano Ledger
+## Notes: Your gold, XP and time in one place: gold by source, history, lifetime totals and level times. Formerly Session Tracker. Part of Allemano Addons.
+## Version: 0.6.0
+## Author: Allemano
+## Category: Miscellaneous
+## X-Curse-Project-ID: 1719167
+## SavedVariables: AllemanoLedgerDB, SessionTrackerDB
+## OptionalDeps: Hush
+## IconTexture: Interface\AddOns\AllemanoLedger\Media\wow\icon
+
+Core.lua
+Theme.lua
+Widgets.lua
+Format.lua
+Session.lua
+Levels.lua
+Ledger.lua
+UI\Window.lua
+UI\Levels.lua
+UI\Settings.lua
+UI\Ledger.lua

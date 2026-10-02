@@ -64,8 +64,8 @@ end
 
 local function build()
     local s = ST.db.settings
-    frame = CreateFrame("Frame", "SessionTrackerSettingsFrame", UIParent)
-    tinsert(UISpecialFrames, "SessionTrackerSettingsFrame") -- ESC closes it
+    frame = CreateFrame("Frame", "AllemanoLedgerSettingsFrame", UIParent)
+    tinsert(UISpecialFrames, "AllemanoLedgerSettingsFrame") -- ESC closes it
     frame:SetFrameStrata("HIGH")
     frame:SetToplevel(true)
     frame:SetClampedToScreen(true)
@@ -198,6 +198,7 @@ local function build()
     local reset = textButton(frame, "Reset window positions", function()
         ST.Window.ResetPosition()
         ST.LevelsUI.ResetPosition()
+        ST.LedgerUI.ResetPosition()
         ST:Print("Window positions reset.")
     end)
     reset:SetPoint("TOPLEFT", LABEL_X, -(y + 8))
@@ -214,7 +215,7 @@ end
 -- Next to the session window if there is room, else in the middle.
 local function place()
     frame:ClearAllPoints()
-    local main = _G.SessionTrackerFrame
+    local main = _G.AllemanoLedgerFrame
     if main and main:IsShown() and (main:GetLeft() or 0) * main:GetEffectiveScale() > WIDTH * frame:GetEffectiveScale() + 20 then
         frame:SetPoint("TOPRIGHT", main, "TOPLEFT", -8, 0)
     else

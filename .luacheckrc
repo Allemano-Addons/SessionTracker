@@ -3,10 +3,11 @@ max_line_length = false
 self = false
 exclude_files = { "Tests/**" }
 
--- The only globals SessionTracker may write.
+-- The only globals AllemanoLedger may write.
 globals = {
-    "SessionTrackerDB", "SessionTrackerFrame", "SessionTrackerLevelsFrame", "SessionTrackerSettingsFrame",
-    "SLASH_SESSIONTRACKER1", "SLASH_SESSIONTRACKER2", "SlashCmdList",
+    "AllemanoLedgerDB", "AllemanoLedgerFrame", "AllemanoLedgerWindow", "AllemanoLedgerRunSummary",
+    "AllemanoLedgerLevelsFrame", "AllemanoLedgerSettingsFrame",
+    "SLASH_SESSIONTRACKER1", "SLASH_SESSIONTRACKER2", "SLASH_ALLEMANOLEDGER1", "SlashCmdList",
 }
 
 -- WoW API used (read-only). Extend as new APIs are used.
@@ -18,4 +19,9 @@ read_globals = {
     "CUSTOM_CLASS_COLORS", "RAID_CLASS_COLORS", "GetPhysicalScreenSize",
     "UnitGUID", "UnitName", "UnitClass", "UnitLevel", "UnitXP", "UnitXPMax", "GetMoney", "GetMaxPlayerLevel",
     "RequestTimePlayed", "ChatFrameUtil", "GetRealZoneText",
+    -- Ledger: where money comes from and goes
+    "SessionTrackerDB", "IsInInstance", "CanMerchantRepair", "GetRepairAllCost", "InRepairMode",
+    "GetRewardMoney", "GetNumLootItems", "LootSlotHasItem", "GetLootSlotLink", "GetLootSlotInfo", "GetItemInfo",
+    "GetInboxHeaderInfo", "GetInboxInvoiceInfo", "GetSendMailMoney", "hooksecurefunc",
+    "COMBATLOG_XPGAIN_FIRSTPERSON", "FACTION_STANDING_INCREASED", "FACTION_STANDING_DECREASED", "GetXPExhaustion", "GameTooltip",
 }

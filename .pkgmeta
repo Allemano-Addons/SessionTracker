@@ -1,4 +1,4 @@
-package-as: SessionTracker
+package-as: AllemanoLedger
 
 ignore:
   - .luacheckrc

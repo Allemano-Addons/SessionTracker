@@ -1,6 +1,6 @@
 -- Theme: colors, sizes and fonts. The palette is the Allemano look (like Hush's Allemano
 -- theme); font, text size and accent come from the settings (the accent can follow Hush,
--- read only: SessionTracker never needs Hush).
+-- read only: AllemanoLedger never needs Hush).
 local _, ST = ...
 
 local Theme = {}
@@ -41,7 +41,7 @@ Theme.size = {
 Theme.COLUMN_WIDTHS = { narrow = 108, normal = 128, wide = 152 }
 Theme.TEXT_SIZES = { S = 11, M = 12, L = 14 }
 
--- Accent presets for "custom" (the first is SessionTracker amber).
+-- Accent presets for "custom" (the first is AllemanoLedger amber).
 Theme.ACCENTS = { "E8A93B", "5B8CFF", "3FD0E0", "3FC77F", "E0564F", "C8332E", "B57EDC", "E6E8EB" }
 
 local function settings() return ST.db and ST.db.settings or {} end
@@ -72,10 +72,10 @@ end
 
 function Theme.HasHush() return type(HushDB) == "table" end
 
--- SessionTracker's own color (the amber of its logo), the default accent.
+-- AllemanoLedger's own color (the amber of its logo), the default accent.
 Theme.OWN_ACCENT = "E8A93B"
 
--- accentMode: "own" (SessionTracker amber), "hush" (follow Hush, else own), "class" or "custom".
+-- accentMode: "own" (AllemanoLedger amber), "hush" (follow Hush, else own), "class" or "custom".
 function Theme:Accent()
     local s = settings()
     if s.accentMode == "class" then

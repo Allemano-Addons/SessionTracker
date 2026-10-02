@@ -1,5 +1,36 @@
 # Changelog
 
+## 0.6.0
+- Two new tabs in the Ledger window, each with a period switch (Session / Today / 7 days / All time):
+  - **Progress**: XP gained (and how much came from quests), XP per hour, kills, deaths, level progress
+    with time on this level, time to next level and rested XP, and reputation gained per faction.
+  - **Loot**: items looted by quality, vendor value of the loot (per hour), loot coins, kills per hour, and a list
+    of the latest rare and better drops (hover for the item tooltip).
+- Daily totals now also keep kills, deaths, quest XP, items by quality and reputation.
+- Reputation is read from the game's own chat line, so it works in any language.
+- Kills are counted from the XP chat line ("X dies, you gain N experience"), so only kills that give XP count (not grey mobs, not at max level). The combat log cannot be used: addons may not register it on this client.
+
+## 0.5.0 - Allemano Ledger
+- Session Tracker is now **Allemano Ledger**. The folder, the saved data and the window title changed
+  name; your old data is copied over on the first start (the old variable is left untouched as a backup).
+  `/ledger` opens the new window; `/session` and `/sesh` still show/hide the small session window.
+- New **Ledger window** with tabs:
+  - **Now**: earned, spent, net and gold per hour (with XP per hour), income by source, expenses,
+    a graph of net gold over the session, vendor value of loot, Pause / Resume, a manual activity tag
+    (automatic by default: Leveling, Farming, Dungeon, Raid, PvP) and End session.
+  - **History**: gold earned per day (14 days / 30 days / all) split by source, and a table of finished
+    sessions and instance runs with net gold and gold per hour (mouse wheel scrolls).
+  - **Lifetime**: totals since the install, gold held over time across all characters and where the gold came from.
+  - **Alts** is marked "Soon"; **Settings** opens the settings window.
+- Gold is now tracked **by source**: loot coins, vendor sales, quest rewards, auction house, mail, trades and
+  other income; repairs, vendor purchases, training, flights, mail and other expenses. Gold you move between
+  your own characters (mail or trade) is counted as a transfer, not as income or expense.
+- **Run summary**: when you leave a dungeon, raid or battleground a popup shows what the run made
+  (Save to history / Discard).
+- Daily totals per character (gold by source, XP, time online, gold held) are kept for the charts.
+- The small session window: title is "Ledger", a "Details" button opens the Ledger window, the time row shows
+  "Paused" when the session is paused, "Gold" is now net income minus expenses without transfers.
+
 ## 0.4.0
 - Allemano look, like AltBoard and Allemano Raid Tools: rounded panels, the neutral palette,
   the SessionTracker mark and "Session" in the title, an outlined "Levels" button (amber while

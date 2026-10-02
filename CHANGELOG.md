@@ -1,6 +1,7 @@
 # Changelog
 
 ## 0.6.0
+- **Session Tracker is now Allemano Ledger.** New window (`/ledger`) with Now, History, Lifetime and Progress/Loot tabs, gold tracked by source, run summaries when you leave an instance, and your old data moves over by itself. The small session window is still `/session`. Details under 0.5.0 below.
 - Two new tabs in the Ledger window, each with a period switch (Session / Today / 7 days / All time):
   - **Progress**: XP gained (and how much came from quests), XP per hour, kills, deaths, level progress
     with time on this level, time to next level and rested XP, and reputation gained per faction.

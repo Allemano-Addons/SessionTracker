@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.7.1
+- Less memory churn: with the Ledger window open, only the clock and the Now tab are redrawn every second; the other tabs are redrawn every tenth second, and the Now graph only when its numbers move. The memory shown in the Hub's Performance page used to creep up the longer the window was open.
+
 ## 0.7.0
 - **Alts tab:** every character the addon has seen side by side: level, gold, net earned over the last 7 days, gold per hour, time played and each character's share of the income. Three cards on top show the gold on all characters, the 7-day net and who earns the most per hour. A line under the table tells how much gold you moved between your own characters (left out of the numbers); "Show transfers" lists it per character in chat.
 - **Gold goal** on the Lifetime tab: set a target (a mount, say) with Set a goal / Edit goal. A bar shows the gold you hold on all characters against the target, and a line tells how long it takes at your pace of the last 14 days. Clear goal removes it.

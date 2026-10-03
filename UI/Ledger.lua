@@ -400,10 +400,16 @@ local function refreshNow(p)
     end
 
     -- Graph: the net gold over the session.
-    local pts = {}
-    for _, q in ipairs(s.series or {}) do pts[#pts + 1] = { q[1], q[2] } end
-    pts[#pts + 1] = { s.elapsed, s.gold }
-    p.chart:SetPoints(pts)
+    -- (redrawn only when the series or the end point has moved: building the point list every
+    -- second made a lot of garbage)
+    local count, bucket = #(s.series or {}), floor(s.elapsed / 15)
+    if p.chartCount ~= count or p.chartGold ~= s.gold or p.chartBucket ~= bucket then
+        p.chartCount, p.chartGold, p.chartBucket = count, s.gold, bucket
+        local pts = {}
+        for _, q in ipairs(s.series or {}) do pts[#pts + 1] = { q[1], q[2] } end
+        pts[#pts + 1] = { s.elapsed, s.gold }
+        p.chart:SetPoints(pts)
+    end
 
     p.activity:SetText(s.tag)
     local r, g, b = hexRGB(TAG_COLOR[s.tag] or TAG_COLOR.Other)
@@ -1411,6 +1417,15 @@ local function showTab(name)
     LedgerUI.Refresh()
 end
 
+-- The session pill in the title bar (the clock).
+local function updatePill()
+    local s = Session.Stats()
+    if s and frame.pill then
+        frame.pillText:SetText(("Session   %s"):format(s.paused and "Paused" or Fmt.clock(s.elapsed)))
+        frame.pillDot:SetColorTexture(Theme:Color(s.paused and "warn" or "good"))
+    end
+end
+
 function LedgerUI.Refresh()
     if not frame or not frame:IsShown() then return end
     local def = BUILDERS[currentTab]
@@ -1419,12 +1434,16 @@ function LedgerUI.Refresh()
         local ok, err = pcall(def[2], page)
         if not ok then ST:RecordError("refresh " .. currentTab, err) end
     end
-    -- The session pill in the title bar.
-    local s = Session.Stats()
-    if s and frame.pill then
-        frame.pillText:SetText(("Session   %s"):format(s.paused and "Paused" or Fmt.clock(s.elapsed)))
-        frame.pillDot:SetColorTexture(Theme:Color(s.paused and "warn" or "good"))
-    end
+    updatePill()
+end
+
+-- Once a second: the clock, and the Now tab (it shows a running session). The other tabs
+-- change slowly and are heavier to build, so they are redrawn every tenth second.
+local tickCount = 0
+function LedgerUI.Tick()
+    if not frame or not frame:IsShown() then return end
+    tickCount = tickCount + 1
+    if currentTab == "Now" or tickCount % 10 == 0 then LedgerUI.Refresh() else updatePill() end
 end
 
 local function savePosition()
@@ -1535,7 +1554,8 @@ local function build()
     frame:SetScript("OnShow", function()
         LedgerUI.Refresh()
         if C_Timer and C_Timer.NewTicker then
-            ticker = C_Timer.NewTicker(1, function() ST:Call("ledger tick", LedgerUI.Refresh) end)
+            tickCount = 0
+            ticker = C_Timer.NewTicker(1, function() ST:Call("ledger tick", LedgerUI.Tick) end)
         end
         ST.db.ledgerWindow.shown = true
     end)

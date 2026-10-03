@@ -59,6 +59,7 @@ local function char()
     end
     c.name = playerName()
     c.class = select(2, UnitClass("player"))
+    c.level = UnitLevel("player")
     c.history = c.history or {}
     c.days = c.days or {}
     return c

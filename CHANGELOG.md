@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.7.0
+- **Alts tab:** every character the addon has seen side by side: level, gold, net earned over the last 7 days, gold per hour, time played and each character's share of the income. Three cards on top show the gold on all characters, the 7-day net and who earns the most per hour. A line under the table tells how much gold you moved between your own characters (left out of the numbers); "Show transfers" lists it per character in chat.
+- **Gold goal** on the Lifetime tab: set a target (a mount, say) with Set a goal / Edit goal. A bar shows the gold you hold on all characters against the target, and a line tells how long it takes at your pace of the last 14 days. Clear goal removes it.
+- Each character's level and gold are now remembered so the Alts tab can show characters you are not playing right now. A character shows up after you have logged in on it once with this version.
+
 ## 0.6.0
 - **Session Tracker is now Allemano Ledger.** New window (`/ledger`) with Now, History, Lifetime and Progress/Loot tabs, gold tracked by source, run summaries when you leave an instance, and your old data moves over by itself. The small session window is still `/session`. Details under 0.5.0 below.
 - Two new tabs in the Ledger window, each with a period switch (Session / Today / 7 days / All time):

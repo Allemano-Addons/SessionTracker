@@ -1,5 +1,5 @@
 -- The Ledger window (the Allemano look): tabs Now / History / Lifetime / Alts / Settings.
--- Alts is "Soon". A small summary popup shows when an instance run ends.
+-- Alts is the characters table; Lifetime has the gold goal. A small summary popup shows when an instance run ends.
 local _, ST = ...
 
 local Theme, W, Session, Ledger, Fmt = ST.Theme, ST.Widgets, ST.Session, ST.Ledger, ST.Fmt
@@ -196,32 +196,6 @@ local function lineChart(parent)
         self.dot:Show()
     end
     return c
-end
-
--- ---------------------------------------------------------------------------
--- "Soon" pages
--- ---------------------------------------------------------------------------
-
-local function soonPage(parent, title, lines)
-    local p = CreateFrame("Frame", nil, parent)
-    p:SetPoint("TOPLEFT", PAD, -TOP)
-    p:SetPoint("BOTTOMRIGHT", -PAD, PAD)
-    local c = card(p, 10, 10)
-    c:SetAllPoints()
-    local big = label(c, 14, "text", "CENTER")
-    big:SetPoint("CENTER", 0, 40)
-    big:SetText("Soon")
-    local t = label(c, 2, "textDim", "CENTER")
-    t:SetPoint("TOP", big, "BOTTOM", 0, -14)
-    t:SetText(title)
-    local prev = t
-    for _, line in ipairs(lines) do
-        local l = label(c, 0, "textFaint", "CENTER")
-        l:SetPoint("TOP", prev, "BOTTOM", 0, -8)
-        l:SetText(line)
-        prev = l
-    end
-    return p
 end
 
 -- ---------------------------------------------------------------------------
@@ -749,19 +723,25 @@ local function buildLifetime(parent)
         p.srcRows[i] = row
     end
 
-    -- The goal comes later.
+    -- The gold goal: a target for the gold you hold, and how long it takes at your pace.
     local goalTop = rowsTop + rowsH + GAP
-    local goal = card(p, innerW, 60)
+    local goal = card(p, innerW, 88)
     goal:SetPoint("TOPLEFT", PAD, -goalTop)
-    local gt = label(goal, 2, "text")
-    gt:SetPoint("TOPLEFT", 14, -12)
-    gt:SetText("Gold goal")
-    local gs = label(goal, 0, "textFaint")
-    gs:SetPoint("TOPLEFT", 14, -34)
-    gs:SetText("Set a target (a mount, say) and see how long it takes at your pace.")
-    local soon = label(goal, 0, "textDim", "RIGHT")
-    soon:SetPoint("TOPRIGHT", -14, -14)
-    soon:SetText("Soon")
+    goal.title = label(goal, 2, "text")
+    goal.title:SetPoint("TOPLEFT", 14, -14)
+    goal.edit = button(goal, "Edit goal", function() LedgerUI.EditGoal() end)
+    goal.edit:SetHeight(26)
+    goal.edit:SetPoint("TOPRIGHT", -12, -10)
+    goal.progress = label(goal, 0, "text", "RIGHT")
+    goal.progress:SetPoint("RIGHT", goal.edit, "LEFT", -12, 0)
+    goal.bar = bar(goal, 8)
+    goal.bar:SetPoint("TOPLEFT", 14, -46)
+    goal.bar:SetPoint("TOPRIGHT", -14, -46)
+    W.OnAccent(function(r, g, b) goal.bar:SetColor(r, g, b) end)
+    goal.text = label(goal, 0, "textDim")
+    goal.text:SetPoint("TOPLEFT", 14, -62)
+    goal.text:SetPoint("TOPRIGHT", -14, -62)
+    p.goal = goal
 
     p.foot = label(p, -1, "textFaint")
     p.foot:SetPoint("BOTTOMLEFT", PAD, 14)
@@ -771,7 +751,34 @@ local function buildLifetime(parent)
     return p
 end
 
+local function refreshGoal(p)
+    local goal, g = p.goal, Ledger.Goal()
+    if not g then
+        goal.title:SetText("Gold goal")
+        goal.edit:SetLabel("Set a goal")
+        goal.progress:SetText("")
+        goal.bar:SetFraction(0)
+        goal.text:SetText("Set a target (a mount, say) and see how long it takes at your pace.")
+        return
+    end
+    local held = Ledger.TotalGold()
+    local pace = Ledger.Pace()
+    goal.title:SetText("Goal: " .. g.name)
+    goal.edit:SetLabel("Edit goal")
+    goal.progress:SetText(Fmt.gold(held) .. " of " .. Fmt.gold(g.amount))
+    goal.bar:SetFraction(held / g.amount)
+    if held >= g.amount then
+        goal.text:SetText("Goal reached. You hold " .. Fmt.gold(held - g.amount) .. " more than the target.")
+    elseif pace > 0 then
+        local days = math.ceil((g.amount - held) / pace)
+        goal.text:SetText(("At your current pace of about %s per day you reach it in %d day%s."):format(Fmt.gold(pace), days, days == 1 and "" or "s"))
+    else
+        goal.text:SetText("No positive pace over the last 14 days yet, so there is no estimate.")
+    end
+end
+
 local function refreshLifetime(p)
+    refreshGoal(p)
     local life = Ledger.Lifetime()
     local earned, spent = Session.Sum(life.inc), Session.Sum(life.exp)
     local since = life.firstDay and ("since " .. dayText(life.firstDay)) or "nothing tracked yet"
@@ -1101,6 +1108,243 @@ local function refreshLoot(p)
 end
 
 -- ---------------------------------------------------------------------------
+-- Page: Alts (every character side by side, last 7 days)
+-- ---------------------------------------------------------------------------
+
+local ALT_ROWS = 6
+local altOffset = 0
+
+local function buildAlts(parent)
+    local p = CreateFrame("Frame", nil, parent)
+    p:SetPoint("TOPLEFT", 0, 0)
+    p:SetPoint("BOTTOMRIGHT", 0, 0)
+    local innerW = WIDTH - 2 * PAD
+    local cardW = floor((innerW - 2 * GAP) / 3)
+    p.cards = {}
+    for i = 1, 3 do
+        local c = statCard(p, cardW)
+        c:SetPoint("TOPLEFT", PAD + (i - 1) * (cardW + GAP), -TOP)
+        p.cards[i] = c
+    end
+
+    local tableTop = TOP + 72 + GAP
+    local tc = card(p, innerW, 30 + ALT_ROWS * 34 + 4)
+    tc:SetPoint("TOPLEFT", PAD, -tableTop)
+    local COLS = {
+        name = { 14, 128 }, level = { 146, 40 }, gold = { 192, 96 }, earned = { 296, 100 },
+        perHour = { 404, 92 }, played = { 500, 64 },
+    }
+    local heads = { name = "Character", level = "Level", gold = "Gold", earned = "Earned (7 d)", perHour = "Gold / h", played = "Played" }
+    for key, col in pairs(COLS) do
+        local h = label(tc, -1, "textDim")
+        h:SetPoint("TOPLEFT", col[1], -9)
+        h:SetText(heads[key])
+    end
+    local sh = label(tc, -1, "textDim")
+    sh:SetPoint("TOPLEFT", 574, -9)
+    sh:SetText("Share of income")
+    local hsep = W.Line(tc, "top", "line")
+    hsep:ClearAllPoints()
+    hsep:SetPoint("TOPLEFT", 1, -30)
+    hsep:SetPoint("TOPRIGHT", -1, -30)
+    p.rows = {}
+    for i = 1, ALT_ROWS do
+        local row = CreateFrame("Button", nil, tc)
+        row:SetHeight(34)
+        row:SetPoint("TOPLEFT", 1, -31 - (i - 1) * 34)
+        row:SetPoint("TOPRIGHT", -1, -31 - (i - 1) * 34)
+        row.hl = W.Fill(row, "selected", 1)
+        row.hl:SetAllPoints()
+        row.hl:Hide()
+        for key, col in pairs(COLS) do
+            local t = label(row, 0, key == "gold" and "text" or "text")
+            t:SetPoint("LEFT", col[1] - 1, 0)
+            t:SetWidth(col[2] - 6)
+            row[key] = t
+        end
+        row.shareBar = bar(row, 5)
+        row.shareBar:SetWidth(54)
+        row.shareBar:SetPoint("LEFT", 573, 0)
+        row.pct = label(row, 0, "text", "RIGHT")
+        row.pct:SetPoint("RIGHT", -10, 0)
+        row:SetScript("OnEnter", function(self)
+            self.hl:Show()
+            local e = self.entry
+            if not e then return end
+            W.ShowTooltip(self, {
+                e.name .. (e.isMe and " (you)" or ""),
+                "Earned " .. Fmt.money(e.inc) .. ", spent " .. Fmt.money(e.exp) .. " in 7 days",
+                "Online " .. Fmt.duration(e.time) .. " in 7 days",
+            })
+        end)
+        row:SetScript("OnLeave", function(self)
+            self.hl:Hide()
+            W.HideTooltip()
+        end)
+        p.rows[i] = row
+    end
+    p.empty = label(tc, 0, "textFaint", "CENTER")
+    p.empty:SetPoint("CENTER", 0, -12)
+    p.empty:SetText("Log in on your characters to see them here.")
+    tc:EnableMouseWheel(true)
+    tc:SetScript("OnMouseWheel", function(_, delta)
+        altOffset = math.max(0, altOffset - delta)
+        LedgerUI.Refresh()
+    end)
+
+    -- Transfers between your own characters, left out of the numbers above.
+    local noteTop = tableTop + 30 + ALT_ROWS * 34 + 4 + GAP
+    local note = card(p, innerW, HEIGHT - noteTop - PAD)
+    note:SetPoint("TOPLEFT", PAD, -noteTop)
+    p.noteText = label(note, 0, "textDim")
+    p.noteText:SetPoint("LEFT", 14, 0)
+    p.noteText:SetPoint("RIGHT", -150, 0)
+    p.noteText:SetWordWrap(true)
+    p.transfers = button(note, "Show transfers", function()
+        local any
+        for _, e in ipairs(Ledger.Characters()) do
+            if e.xferIn > 0 or e.xferOut > 0 then
+                any = true
+                ST:Print(("%s: received %s, sent %s (7 days)"):format(e.name, Fmt.money(e.xferIn), Fmt.money(e.xferOut)))
+            end
+        end
+        if not any then ST:Print("No transfers between your characters in the last 7 days.") end
+    end)
+    p.transfers:SetPoint("RIGHT", -12, 0)
+    return p
+end
+
+local function refreshAlts(p)
+    local list = Ledger.Characters()
+    local total, net, incSum, best = 0, 0, 0, nil
+    local xin, xout = 0, 0
+    for _, e in ipairs(list) do
+        total, net, incSum = total + e.gold, net + e.net, incSum + e.inc
+        xin, xout = xin + e.xferIn, xout + e.xferOut
+        local gph = perHour(e.net, e.time)
+        e.gph = gph
+        if gph and (not best or gph > best.gph) then best = e end
+    end
+    p.cards[1]:Set("Gold on all characters", Fmt.money(total), #list .. " character" .. (#list == 1 and "" or "s"), "text")
+    p.cards[1].value:SetTextColor(Theme:Accent())
+    p.cards[2]:Set("Earned last 7 days", (net < 0 and "-" or "+") .. Fmt.money(net), "net, transfers left out", net >= 0 and "good" or "warn")
+    p.cards[3]:Set("Best gold / hour", best and best.name or "-", best and (Fmt.money(best.gph) .. " / hour") or "play a bit to see this", "text")
+    if best then
+        local r, g, b = Theme.ClassColor(best.class)
+        if r then p.cards[3].value:SetTextColor(r, g, b) end
+    end
+
+    altOffset = math.max(0, math.min(altOffset, #list - ALT_ROWS))
+    p.empty:SetShown(#list == 0)
+    for i, row in ipairs(p.rows) do
+        local e = list[altOffset + i]
+        row:SetShown(e ~= nil)
+        if e then
+            row.entry = e
+            row.name:SetText(e.name)
+            local r, g, b = Theme.ClassColor(e.class)
+            if r then row.name:SetTextColor(r, g, b) else row.name:SetTextColor(Theme:Color("text")) end
+            row.level:SetText(e.level and tostring(e.level) or "-")
+            row.gold:SetText(Fmt.money(e.gold))
+            row.earned:SetText((e.net < 0 and "-" or "+") .. Fmt.money(e.net))
+            row.earned:SetTextColor(Theme:Color(e.net >= 0 and "good" or "warn"))
+            row.perHour:SetText(e.gph and ((e.gph < 0 and "-" or "") .. Fmt.money(e.gph)) or "-")
+            row.played:SetText(e.played and Fmt.duration(e.played) or "-")
+            local share = incSum > 0 and e.inc / incSum or 0
+            row.pct:SetText(("%d%%"):format(floor(share * 100 + 0.5)))
+            row.shareBar:SetFraction(share)
+            if not r then r, g, b = Theme:Accent() end
+            row.shareBar:SetColor(r, g, b)
+        end
+    end
+    local moved = math.max(xin, xout)
+    if moved > 0 then
+        p.noteText:SetText("Transfers excluded: " .. Fmt.money(moved) .. " moved between your own characters this week is not counted as income or expense.")
+    else
+        p.noteText:SetText("Gold you mail or trade between your own characters is not counted as income or expense. Nothing moved this week.")
+    end
+end
+
+-- ---------------------------------------------------------------------------
+-- The goal editor
+-- ---------------------------------------------------------------------------
+
+local goalDialog
+
+local function buildGoalDialog()
+    local d = CreateFrame("Frame", "AllemanoLedgerGoal", UIParent)
+    d:SetFrameStrata("DIALOG")
+    d:SetSize(340, 218)
+    d:SetPoint("CENTER", UIParent, "CENTER", 0, 80)
+    d:EnableMouse(true)
+    d.bg = W.Fill(d, "window", 1)
+    d.bg:SetAllPoints()
+    W.Panel(d, d.bg, W.Border(d, "line"))
+    tinsert(UISpecialFrames, "AllemanoLedgerGoal")
+    local title = label(d, 2, "text")
+    title:SetPoint("TOPLEFT", 16, -16)
+    title:SetText("Gold goal")
+    local nl = label(d, -1, "textDim")
+    nl:SetPoint("TOPLEFT", 16, -48)
+    nl:SetText("What is it for?")
+    d.name = W.EditBox(d, "Mount fund", 28)
+    d.name:SetPoint("TOPLEFT", 16, -64)
+    d.name:SetPoint("TOPRIGHT", -16, -64)
+    d.name:SetMaxLetters(40)
+    local al = label(d, -1, "textDim")
+    al:SetPoint("TOPLEFT", 16, -102)
+    al:SetText("How much gold?")
+    d.amount = W.EditBox(d, "1000", 28)
+    d.amount:SetPoint("TOPLEFT", 16, -118)
+    d.amount:SetPoint("TOPRIGHT", -16, -118)
+    d.amount:SetMaxLetters(9)
+    d.hint = label(d, -1, "warn")
+    d.hint:SetPoint("TOPLEFT", 16, -152)
+    d.hint:SetText("")
+    local save = button(d, "Save", function() LedgerUI.SaveGoal() end, "primary")
+    save:SetPoint("BOTTOMRIGHT", -16, 14)
+    local cancel = button(d, "Cancel", function() d:Hide() end)
+    cancel:SetPoint("RIGHT", save, "LEFT", -8, 0)
+    d.clear = button(d, "Clear goal", function()
+        Ledger.ClearGoal()
+        d:Hide()
+        LedgerUI.Refresh()
+    end)
+    d.clear:SetPoint("BOTTOMLEFT", 16, 14)
+    d.amount:SetScript("OnEnterPressed", function() LedgerUI.SaveGoal() end)
+    d.name:SetScript("OnEnterPressed", function() d.amount:SetFocus() end)
+    d:Hide()
+    return d
+end
+
+function LedgerUI.EditGoal()
+    if not ST.db then return end
+    goalDialog = goalDialog or buildGoalDialog()
+    local g = Ledger.Goal()
+    goalDialog.name:SetText(g and g.name or "")
+    goalDialog.amount:SetText(g and tostring(floor(g.amount / 10000)) or "")
+    goalDialog.hint:SetText("")
+    goalDialog.clear:SetShown(g ~= nil)
+    goalDialog:SetScale(ST.db.settings.scale or 1)
+    goalDialog:Show()
+    goalDialog.amount:SetFocus()
+end
+
+function LedgerUI.SaveGoal()
+    local d = goalDialog
+    if not d then return end
+    local text = (d.amount:GetText() or ""):gsub("[%s,]", "")
+    local gold = tonumber(text)
+    if not gold or gold < 1 or gold ~= floor(gold) then
+        d.hint:SetText("Enter a whole number of gold, like 1000.")
+        return
+    end
+    Ledger.SetGoal(d.name:GetText(), gold * 10000)
+    d:Hide()
+    LedgerUI.Refresh()
+end
+
+-- ---------------------------------------------------------------------------
 -- Page: Settings (the real settings window opens from here)
 -- ---------------------------------------------------------------------------
 
@@ -1135,10 +1379,7 @@ local BUILDERS = {
     Lifetime = { buildLifetime, refreshLifetime },
     Progress = { buildProgress, refreshProgress },
     Loot = { buildLoot, refreshLoot },
-    Alts = { function(parent)
-        return soonPage(parent, "All your characters side by side",
-            { "Gold, level, earnings and gold per hour for every character,", "and how much each one adds to the total." })
-    end },
+    Alts = { buildAlts, refreshAlts },
     Settings = { buildSettings },
 }
 

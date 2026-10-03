@@ -39,8 +39,11 @@ Press the **Levels** button on the small window (or type `/ledger levels`) to se
 ## Gold between your own characters
 Gold you mail or trade to **a character the addon has seen** is counted as a transfer, not as income or expense. Log in once on each character so the addon knows them.
 
-## Coming
-An **Alts** tab with every character side by side, and a **gold goal** ("how long until I can afford the mount?"). Both are marked "Soon" in the window.
+### Alts
+Every character the addon has seen, side by side: **level, gold, net earned in the last 7 days, gold per hour, time played** and each character's **share of the income**. Cards on top show the gold on all your characters and who earns the most per hour. A character shows up after you have logged in on it once.
+
+### Gold goal
+On the Lifetime tab you can set a **gold goal** ("a mount, 1000g"). A bar shows the gold you hold on all characters against the target, and a line tells how long it takes at your pace of the last 14 days.
 
 ## Good to know
 - **Standalone.** No other addon is needed. If Hush is installed, Ledger can follow its accent color.

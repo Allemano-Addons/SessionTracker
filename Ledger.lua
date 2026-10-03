@@ -134,7 +134,7 @@ function Ledger.Record(kind, source, amount)
     bump(kind == "in" and d.inc or d.exp, source, amount)
     if not ctx.loggingOut then
         local money = GetMoney()
-        if money then d.gold = money end
+        if money then d.gold, c.gold = money, money end
     end
     if live then
         bump(kind == "in" and s.inc or s.exp, source, amount)
@@ -351,6 +351,8 @@ ST:RegisterEvent("PLAYER_MONEY", function()
     if not new then return end
     local last = ctx.lastMoney
     ctx.lastMoney = new
+    local me = char()
+    if me then me.gold = new end
     if last == nil then return end
     if new > last then classifyIn(new - last) elseif new < last then classifyOut(last - new) end
 end)
@@ -478,7 +480,7 @@ function Ledger.Heartbeat()
     if dt > 0 and dt <= 60 then d.time = (d.time or 0) + dt end
     if not ctx.loggingOut then
         local money = GetMoney()
-        if money and money > 0 then d.gold = money end
+        if money and money > 0 then d.gold, c.gold = money, money end
     end
     if c.run then c.run.last = now end
 end
@@ -687,6 +689,76 @@ function Ledger.GoldOverTime(maxDays)
     end
     return out
 end
+
+-- ---------------------------------------------------------------------------
+-- Characters (the Alts tab) and the gold goal
+-- ---------------------------------------------------------------------------
+
+-- Every character the addon has seen, with the last 7 days:
+-- { guid, name, class, level, gold, inc, exp, net, time, played, xferIn, xferOut, isMe }
+function Ledger.Characters()
+    local out = {}
+    if not ST.db then return out end
+    local keys = Ledger.RecentDays(7)
+    local mine = UnitGUID("player")
+    for guid, c in pairs(ST.db.chars) do
+        if c.name then
+            local e = { guid = guid, name = c.name, class = c.class, level = c.level, isMe = guid == mine,
+                gold = guid == mine and (GetMoney() or c.gold or 0) or (c.gold or 0),
+                inc = 0, exp = 0, time = 0, xferIn = 0, xferOut = 0,
+                played = c.played and c.played.total }
+            for _, key in ipairs(keys) do
+                local d = c.days and c.days[key]
+                if d then
+                    e.inc, e.exp = e.inc + sum(d.inc), e.exp + sum(d.exp)
+                    e.time = e.time + (d.time or 0)
+                    e.xferIn, e.xferOut = e.xferIn + (d.xferIn or 0), e.xferOut + (d.xferOut or 0)
+                end
+            end
+            e.net = e.inc - e.exp
+            out[#out + 1] = e
+        end
+    end
+    sort(out, function(a, b)
+        if a.gold ~= b.gold then return a.gold > b.gold end
+        return a.name < b.name
+    end)
+    return out
+end
+
+-- Gold held by all characters together right now.
+function Ledger.TotalGold()
+    local total = 0
+    for _, e in ipairs(Ledger.Characters()) do total = total + e.gold end
+    return total
+end
+
+-- Average net gold per day over the last 14 days (counting from the first day that has any),
+-- in copper; can be zero or negative.
+function Ledger.Pace()
+    local keys = Ledger.RecentDays(14)
+    local first, net = nil, 0
+    for i = #keys, 1, -1 do -- oldest first
+        local d = Ledger.Day(keys[i])
+        local has = sum(d.inc) > 0 or sum(d.exp) > 0
+        if has and not first then first = i end
+        net = net + sum(d.inc) - sum(d.exp)
+    end
+    if not first then return 0 end
+    return net / first -- first = how many days back (inclusive) the data starts
+end
+
+function Ledger.Goal() return ST.db and ST.db.goal end
+
+function Ledger.SetGoal(name, amount)
+    if not ST.db then return end
+    amount = floor(tonumber(amount) or 0)
+    if amount <= 0 then ST.db.goal = nil return end
+    name = strtrim(name or "")
+    ST.db.goal = { name = name ~= "" and name:sub(1, 40) or "Goal", amount = amount, set = time() }
+end
+
+function Ledger.ClearGoal() if ST.db then ST.db.goal = nil end end
 
 -- Every saved session and run of every character, newest first:
 -- { entry..., name, class }.

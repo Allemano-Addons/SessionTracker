@@ -629,6 +629,57 @@ step("Ledger: Progress and Loot tabs draw", function()
     assert(#ST.errors == before, "errors: " .. tostring(ST.errors[#ST.errors] and ST.errors[#ST.errors].msg))
     SlashCmdList.ALLEMANOLEDGER("")
 end)
+step("Ledger: alts table and totals", function()
+    -- Mirelle (an alt seen earlier) played yesterday and earned 600.
+    local alt = ST.db.chars["Player-2-B"]
+    alt.level, alt.gold = 14, 5000
+    local yesterday = ST.Ledger.RecentDays(2)[2]
+    alt.days[yesterday] = { inc = { vendor = 600 }, exp = { repair = 100 }, time = 3600, xferIn = 0, xferOut = 700 }
+    alt.played = { total = 9000, at = now }
+    local list = ST.Ledger.Characters()
+    assert(#list == 2, "characters " .. #list)
+    local me, mir
+    for _, e in ipairs(list) do if e.isMe then me = e else mir = e end end
+    assert(me and mir, "both characters")
+    assert(me.gold == P.money and me.level == P.level, "my gold and level are live")
+    assert(mir.gold == 5000 and mir.net == 500 and mir.xferOut == 700 and mir.played == 9000, "alt numbers")
+    assert(ST.Ledger.TotalGold() == P.money + 5000, "total gold")
+    -- the Alts tab draws
+    local before = #ST.errors
+    SlashCmdList.ALLEMANOLEDGER("")
+    clickAll(function(btn) return rawget(btn, "underline") and btn.text._text == "Alts" end)
+    assert(#ST.errors == before, "errors drawing Alts: " .. tostring(ST.errors[#ST.errors] and ST.errors[#ST.errors].msg))
+    SlashCmdList.ALLEMANOLEDGER("")
+end)
+step("Ledger: gold goal", function()
+    assert(ST.Ledger.Goal() == nil, "no goal at first")
+    ST.Ledger.SetGoal("Mount fund", 1000 * 10000)
+    local g = ST.Ledger.Goal()
+    assert(g and g.name == "Mount fund" and g.amount == 10000000, "goal saved")
+    assert(ST.Ledger.Pace() ~= 0, "there is a pace")
+    -- the editor: valid input saves, bad input is refused
+    SlashCmdList.ALLEMANOLEDGER("")
+    clickAll(function(btn) return rawget(btn, "underline") and btn.text._text == "Lifetime" end)
+    local before = #ST.errors
+    assert(clickAll(function(btn) return rawget(btn, "text") and btn.text._text == "Edit goal" end) == 1, "no Edit goal button")
+    local d = _G.AllemanoLedgerGoal
+    assert(d and d._shown, "editor not shown")
+    d.amount:SetText("abc")
+    ST.LedgerUI.SaveGoal()
+    assert(d.hint._text ~= "" and d._shown, "bad amount accepted")
+    d.name:SetText("Epic mount")
+    d.amount:SetText("2 500")
+    ST.LedgerUI.SaveGoal()
+    assert(not d._shown and ST.Ledger.Goal().amount == 2500 * 10000 and ST.Ledger.Goal().name == "Epic mount", "edit not saved")
+    assert(#ST.errors == before, "errors in the goal card: " .. tostring(ST.errors[#ST.errors] and ST.errors[#ST.errors].msg))
+    -- reaching the goal and clearing it
+    ST.Ledger.SetGoal("Small", 1)
+    ST.LedgerUI.Refresh()
+    ST.Ledger.ClearGoal()
+    ST.LedgerUI.Refresh()
+    assert(ST.Ledger.Goal() == nil and #ST.errors == before, "clear goal")
+    SlashCmdList.ALLEMANOLEDGER("")
+end)
 step("Ledger: first start after the rename takes over the old data", function()
     AllemanoLedgerDB = nil
     SessionTrackerDB = { chars = { ["Player-9-Z"] = { name = "Old", history = {} } }, settings = {} }

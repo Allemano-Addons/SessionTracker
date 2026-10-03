@@ -1,6 +1,6 @@
 # Credits
 
-**Session Tracker** is part of Allemano Addons (https://allemano-site.pages.dev).
+**Allemano Ledger** (formerly Session Tracker) is part of Allemano Addons (https://allemano-site.pages.dev).
 
 ## How it is made
 
@@ -8,7 +8,7 @@ Designed, directed and tested by Allemano. Much of the code is written with AI a
 
 ## Third-party code
 
-Session Tracker contains no third-party code or libraries. It uses the World of Warcraft API and, where installed, the public interfaces of other addons; nothing from them is bundled.
+Allemano Ledger contains no third-party code or libraries. It uses the World of Warcraft API and, where installed, the public interfaces of other addons; nothing from them is bundled.
 
 ## Art
 

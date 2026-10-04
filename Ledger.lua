@@ -421,7 +421,10 @@ ST:RegisterEvent("LOOT_SLOT_CLEARED", function(_, slot)
     local e = ctx.slots[slot]
     if not e then return end
     ctx.slots[slot] = nil
-    local _, _, quality, _, _, _, _, _, _, _, price = GetItemInfo(e.link)
+    -- Forever has no global GetItemInfo (it lives in C_Item); the item may also not be in memory yet
+    local getInfo = (C_Item and C_Item.GetItemInfo) or GetItemInfo
+    local _, _, quality, _, _, _, _, _, _, _, price = nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil
+    if getInfo then _, _, quality, _, _, _, _, _, _, _, price = getInfo(e.link) end
     quality = tonumber(quality) or (e.rarity and e.rarity >= 0 and e.rarity <= 6 and e.rarity) or 1
     addItem(e.link, e.qty, quality, (tonumber(price) or 0) * e.qty)
 end)

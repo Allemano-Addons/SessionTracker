@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.7.2
+- Fix: picking up loot gave a Lua error ("attempt to call a nil value") on Forever, because the item lookup was called by its old global name. Items are now priced through the client's own item lookup, and an item the game has not loaded yet counts with value 0 instead of failing.
+
 ## 0.7.1
 - Less memory churn: with the Ledger window open, only the clock and the Now tab are redrawn every second; the other tabs are redrawn every tenth second, and the Now graph only when its numbers move. The memory shown in the Hub's Performance page used to creep up the longer the window was open.
 

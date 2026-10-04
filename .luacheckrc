@@ -21,7 +21,7 @@ read_globals = {
     "RequestTimePlayed", "ChatFrameUtil", "GetRealZoneText",
     -- Ledger: where money comes from and goes
     "SessionTrackerDB", "IsInInstance", "CanMerchantRepair", "GetRepairAllCost", "InRepairMode",
-    "GetRewardMoney", "GetNumLootItems", "LootSlotHasItem", "GetLootSlotLink", "GetLootSlotInfo", "GetItemInfo", "C_Item",
+    "GetRewardMoney", "GetNumLootItems", "LootSlotHasItem", "GetLootSlotLink", "GetLootSlotInfo", "GetItemInfo", "C_Item", "issecretvalue",
     "GetInboxHeaderInfo", "GetInboxInvoiceInfo", "GetSendMailMoney", "hooksecurefunc",
     "COMBATLOG_XPGAIN_FIRSTPERSON", "FACTION_STANDING_INCREASED", "FACTION_STANDING_DECREASED", "GetXPExhaustion", "GameTooltip",
 }

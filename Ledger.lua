@@ -245,7 +245,7 @@ ST:RegisterEvent("PLAYER_ENTERING_WORLD", function()
     end
 end)
 ST:RegisterEvent("CHAT_MSG_COMBAT_XP_GAIN", function(_, msg)
-    if not killPattern or type(msg) ~= "string" or not msg:match(killPattern) then return end
+    if not killPattern or type(msg) ~= "string" or (issecretvalue and issecretvalue(msg)) or not msg:match(killPattern) then return end
     local c = char()
     if not c then return end
     local d = today(c)
@@ -273,7 +273,7 @@ local function addRep(faction, n)
 end
 
 ST:RegisterEvent("CHAT_MSG_COMBAT_FACTION_CHANGE", function(_, msg)
-    if type(msg) ~= "string" then return end
+    if type(msg) ~= "string" or (issecretvalue and issecretvalue(msg)) then return end
     local faction, n
     if repUp then faction, n = msg:match(repUp) end
     if faction and tonumber(n) then return addRep(faction, tonumber(n)) end

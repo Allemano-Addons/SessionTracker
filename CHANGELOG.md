@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.7.3
+- Fix: the kill and reputation lines of the chat could cause a Lua error if the game hid them as secret text (in a fight or an instance). They are now only read when they are readable.
+
 ## 0.7.2
 - Fix: picking up loot gave a Lua error ("attempt to call a nil value") on Forever, because the item lookup was called by its old global name. Items are now priced through the client's own item lookup, and an item the game has not loaded yet counts with value 0 instead of failing.
 
